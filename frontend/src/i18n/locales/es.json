@@ -1,6 +1,6 @@
 {
   "nav": {
-    "observatory": "Observatorio RSI",
+    "observatory": "NormTrace IHR (2005+)",
     "countries": "Países",
     "newAnalysis": "Nuevo análisis"
   },
@@ -101,5 +101,10 @@
   "errors": {
     "generic": "Algo salió mal. Por favor intenta de nuevo.",
     "noApiKey": "API key no configurada en el servidor."
+  },
+  "methodology": {
+    "title": "Nota Metodológica",
+    "p1": "NormTrace evalúa la alineación normativa, la compatibilidad legal, el anclaje institucional y las brechas orientadas a la implementación. Trata el silencio normativo como analíticamente significativo y utiliza un análisis estructurado de múltiples capas.",
+    "p2": "Nota: Estos resultados son analíticos y de diagnóstico. Deben verificarse con fuentes legales primarias y complementarse con evidencia empírica."
   }
 }

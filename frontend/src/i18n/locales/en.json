@@ -1,6 +1,6 @@
 {
   "nav": {
-    "observatory": "IHR Observatory",
+    "observatory": "NormTrace IHR (2005+)",
     "countries": "Countries",
     "newAnalysis": "New analysis"
   },
@@ -101,5 +101,10 @@
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "noApiKey": "API key not configured on the server."
+  },
+  "methodology": {
+    "title": "Methodological Overview",
+    "p1": "NormTrace evaluates normative alignment, legal compatibility, institutional anchoring, and implementation-oriented gaps. It treats normative silence as analytically meaningful and uses structured multi-layered analysis.",
+    "p2": "Note: These outputs are analytical and diagnostic. They must be verified against primary legal sources and complemented with empirical evidence."
   }
 }

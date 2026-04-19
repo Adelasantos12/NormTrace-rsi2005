@@ -19,7 +19,30 @@ from skill_prompt import (
     BLOCK_ANALYSIS_PROMPTS
 )
 
+
 Base.metadata.create_all(bind=engine)
+
+def seed_mexico():
+    from database import SessionLocal
+    from models import Country
+    db = SessionLocal()
+    try:
+        if not db.query(Country).filter(Country.iso3 == "MEX").first():
+            mexico = Country(
+                iso3="MEX",
+                name_en="Mexico",
+                name_es="México",
+                name_fr="Mexique",
+                legal_system="civil_law",
+                is_federal="yes"
+            )
+            db.add(mexico)
+            db.commit()
+    finally:
+        db.close()
+
+seed_mexico()
+
 
 app = FastAPI(title="IHR Normative Observatory", version="1.0.0")
 
