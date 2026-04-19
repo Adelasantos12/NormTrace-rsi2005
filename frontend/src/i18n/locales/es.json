@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "observatory": "Observatorio RSI",
+    "countries": "Países",
+    "newAnalysis": "Nuevo análisis"
+  },
+  "language": {
+    "label": "Idioma del análisis",
+    "en": "Inglés",
+    "es": "Español",
+    "fr": "Francés",
+    "hint": "Claude generará todos los hallazgos y propuestas en el idioma seleccionado"
+  },
+  "countries": {
+    "title": "Países",
+    "subtitle": "Selecciona un país para ver sus análisis o iniciar uno nuevo",
+    "addCountry": "Agregar país",
+    "noCountries": "Sin países registrados. Agrega uno para comenzar.",
+    "analyses": "análisis",
+    "lastAnalysis": "Último análisis"
+  },
+  "analysis": {
+    "title": "Análisis",
+    "new": "Nuevo análisis",
+    "status": {
+      "corpus_pending": "Descubriendo corpus",
+      "corpus_ready": "Corpus listo — pendiente de validación",
+      "analyzing": "Analizando",
+      "complete": "Completo",
+      "error": "Error"
+    },
+    "created": "Creado",
+    "completed": "Completado",
+    "sources": "Fuentes consultadas",
+    "sourceDate": "Última reforma",
+    "noSourceDate": "Fecha no disponible",
+    "reanalyzeHint": "Algunas fuentes podrían haberse actualizado desde que se realizó este análisis. Considera iniciar un nuevo análisis si se han publicado reformas.",
+    "scores": {
+      "scanner": "Puntaje escáner",
+      "espar": "Puntaje e-SPAR",
+      "date": "Fecha de referencia e-SPAR",
+      "delta": "Delta",
+      "overreporting": "Se detecta sobre-reporte",
+      "aligned": "Alineado con auto-reporte"
+    }
+  },
+  "corpus": {
+    "title": "Descubrimiento de corpus",
+    "subtitle": "Claude ha identificado los siguientes instrumentos normativos. Revisa y confirma antes de iniciar el análisis.",
+    "include": "Incluir",
+    "review": "Revisar",
+    "discard": "Descartar",
+    "laguna": "No obtenido",
+    "addManual": "Agregar instrumento manualmente",
+    "confirm": "Confirmar corpus e iniciar análisis",
+    "reason": "Razón",
+    "articles": "Artículos RSI",
+    "lastReform": "Última reforma",
+    "moveToInclude": "Mover a Incluir",
+    "moveToDiscard": "Mover a Descartar",
+    "moveToReview": "Mover a Revisar",
+    "userNote": "Agregar nota"
+  },
+  "blocks": {
+    "title": "Análisis por bloque",
+    "A": "Bloque A — Arquitectura institucional",
+    "B": "Bloque B — Capacidades básicas",
+    "C": "Bloque C — Puntos de entrada",
+    "D": "Bloque D — Medidas sobre personas",
+    "E": "Bloque E — Datos y documentos",
+    "F": "Bloque F — Medidas adicionales",
+    "G": "Bloque G — Verificación de compatibilidad",
+    "SCORES": "Puntaje C1 y propuestas de reforma",
+    "analyze": "Analizar este bloque",
+    "analyzing": "Analizando…",
+    "done": "Listo",
+    "pending": "Pendiente"
+  },
+  "severity": {
+    "critical": "Atención prioritaria",
+    "high": "Alta",
+    "medium": "Media",
+    "low": "Baja"
+  },
+  "reforms": {
+    "title": "Propuestas de armonización",
+    "instrument": "Instrumento recomendado",
+    "reason": "Por qué este instrumento",
+    "gap": "Situación actual",
+    "proposed": "Texto sugerido",
+    "lateral": "Efectos laterales",
+    "viability": "Viabilidad"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "close": "Cerrar",
+    "export": "Exportar"
+  },
+  "errors": {
+    "generic": "Algo salió mal. Por favor intenta de nuevo.",
+    "noApiKey": "API key no configurada en el servidor."
+  }
+}
