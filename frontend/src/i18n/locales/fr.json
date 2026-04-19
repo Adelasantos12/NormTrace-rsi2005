@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "observatory": "Observatoire RSI",
+    "countries": "Pays",
+    "newAnalysis": "Nouvelle analyse"
+  },
+  "language": {
+    "label": "Langue de l'analyse",
+    "en": "Anglais",
+    "es": "Espagnol",
+    "fr": "Français",
+    "hint": "Claude génèrera tous les résultats et propositions dans la langue sélectionnée"
+  },
+  "countries": {
+    "title": "Pays",
+    "subtitle": "Sélectionnez un pays pour consulter ses analyses ou en lancer une nouvelle",
+    "addCountry": "Ajouter un pays",
+    "noCountries": "Aucun pays enregistré. Ajoutez-en un pour commencer.",
+    "analyses": "analyses",
+    "lastAnalysis": "Dernière analyse"
+  },
+  "analysis": {
+    "title": "Analyses",
+    "new": "Nouvelle analyse",
+    "status": {
+      "corpus_pending": "Découverte du corpus",
+      "corpus_ready": "Corpus prêt — en attente de validation",
+      "analyzing": "En cours d'analyse",
+      "complete": "Terminée",
+      "error": "Erreur"
+    },
+    "created": "Créée le",
+    "completed": "Terminée le",
+    "sources": "Sources consultées",
+    "sourceDate": "Dernière réforme",
+    "noSourceDate": "Date non disponible",
+    "reanalyzeHint": "Certaines sources peuvent avoir été mises à jour depuis cette analyse. Envisagez une nouvelle analyse si des réformes ont été publiées.",
+    "scores": {
+      "scanner": "Score scanner",
+      "espar": "Score e-SPAR",
+      "date": "Date de référence e-SPAR",
+      "delta": "Delta",
+      "overreporting": "Sur-déclaration détectée",
+      "aligned": "Aligné avec l'auto-déclaration"
+    }
+  },
+  "corpus": {
+    "title": "Découverte du corpus",
+    "subtitle": "Claude a identifié les instruments normatifs suivants. Vérifiez et confirmez avant de lancer l'analyse.",
+    "include": "Inclure",
+    "review": "Réviser",
+    "discard": "Écarter",
+    "laguna": "Non obtenu",
+    "addManual": "Ajouter un instrument manuellement",
+    "confirm": "Confirmer le corpus et lancer l'analyse",
+    "reason": "Motif",
+    "articles": "Articles RSI",
+    "lastReform": "Dernière réforme",
+    "moveToInclude": "Déplacer vers Inclure",
+    "moveToDiscard": "Déplacer vers Écarter",
+    "moveToReview": "Déplacer vers Réviser",
+    "userNote": "Ajouter une note"
+  },
+  "blocks": {
+    "title": "Analyse par bloc",
+    "A": "Bloc A — Architecture institutionnelle",
+    "B": "Bloc B — Capacités de base",
+    "C": "Bloc C — Points d'entrée",
+    "D": "Bloc D — Mesures envers les personnes",
+    "E": "Bloc E — Données et documents",
+    "F": "Bloc F — Mesures supplémentaires",
+    "G": "Bloc G — Vérification de compatibilité",
+    "SCORES": "Score C1 et propositions de réforme",
+    "analyze": "Analyser ce bloc",
+    "analyzing": "Analyse en cours…",
+    "done": "Terminé",
+    "pending": "En attente"
+  },
+  "severity": {
+    "critical": "Attention prioritaire",
+    "high": "Élevée",
+    "medium": "Moyenne",
+    "low": "Faible"
+  },
+  "reforms": {
+    "title": "Propositions d'harmonisation",
+    "instrument": "Instrument recommandé",
+    "reason": "Pourquoi cet instrument",
+    "gap": "Situation actuelle",
+    "proposed": "Texte proposé",
+    "lateral": "Effets latéraux",
+    "viability": "Faisabilité"
+  },
+  "actions": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "export": "Exporter"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite. Veuillez réessayer.",
+    "noApiKey": "Clé API non configurée sur le serveur."
+  }
+}
