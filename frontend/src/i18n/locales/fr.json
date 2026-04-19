@@ -1,6 +1,6 @@
 {
   "nav": {
-    "observatory": "Observatoire RSI",
+    "observatory": "NormTrace IHR (2005+)",
     "countries": "Pays",
     "newAnalysis": "Nouvelle analyse"
   },
@@ -101,5 +101,10 @@
   "errors": {
     "generic": "Une erreur s'est produite. Veuillez réessayer.",
     "noApiKey": "Clé API non configurée sur le serveur."
+  },
+  "methodology": {
+    "title": "Aperçu Méthodologique",
+    "p1": "NormTrace évalue l'alignement normatif, la compatibilité juridique, l'ancrage institutionnel et les lacunes orientées vers la mise en œuvre. Il traite le silence normatif comme analytiquement significatif et utilise une analyse structurée à plusieurs niveaux.",
+    "p2": "Remarque : Ces résultats sont analytiques et diagnostiques. Ils doivent être vérifiés par rapport aux sources juridiques primaires et complétés par des preuves empiriques."
   }
 }

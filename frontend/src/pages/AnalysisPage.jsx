@@ -27,6 +27,14 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   const cancelStream = useRef(null)
 
   useEffect(() => {
+    if (analysis && analysis.status === 'corpus_pending' && streaming !== 'DISCOVERY') {
+      startDiscovery();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status]);
+
+
+  useEffect(() => {
     getCorpus(analysis.id).then(setCorpus)
     const interval = setInterval(async () => {
       const fresh = await getAnalysis(analysis.id)

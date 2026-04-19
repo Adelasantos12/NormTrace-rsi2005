@@ -31,15 +31,25 @@ export default function CountriesPage({ onSelectAnalysis }) {
     setShowAdd(false)
   }
 
+
   async function toggleCountry(country) {
-    if (expandedCountry === country.iso3) {
-      setExpandedCountry(null)
-      return
+    let list = analyses[country.iso3];
+    if (!list) {
+      list = await getAnalyses(country.iso3);
+      setAnalyses(prev => ({ ...prev, [country.iso3]: list }));
     }
-    setExpandedCountry(country.iso3)
-    if (!analyses[country.iso3]) {
-      const list = await getAnalyses(country.iso3)
-      setAnalyses(prev => ({ ...prev, [country.iso3]: list }))
+
+    if (list && list.length > 0) {
+      // Auto-load the most recent analysis
+      onSelectAnalysis(country, list[0]);
+    } else {
+      // Create a new analysis if none exists
+      const analysis = await createAnalysis(country.iso3, 'en');
+      setAnalyses(prev => ({
+        ...prev,
+        [country.iso3]: [analysis, ...(prev[country.iso3] || [])],
+      }));
+      onSelectAnalysis(country, analysis);
     }
   }
 
@@ -57,6 +67,12 @@ export default function CountriesPage({ onSelectAnalysis }) {
   return (
     <div>
       {/* Page header */}
+      <div style={{ marginBottom: '2rem', padding: '16px', background: '#f9f8f5', borderLeft: '4px solid #854F0B', borderRadius: '4px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#5F5E5A' }}>{t('methodology.title')}</h3>
+        <p style={{ fontSize: '13px', color: '#3d3d3a', lineHeight: 1.6, marginBottom: '8px' }}>{t('methodology.p1')}</p>
+        <p style={{ fontSize: '12px', color: '#73726c', fontStyle: 'italic' }}>{t('methodology.p2')}</p>
+      </div>
+
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '4px', ...mono }}>
