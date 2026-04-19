@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import '../i18n/index.js'
+import './i18n/index.js'
 import CountriesPage from './pages/CountriesPage'
 import AnalysisPage from './pages/AnalysisPage'
 import LanguageSwitcher from './components/ui/LanguageSwitcher'
