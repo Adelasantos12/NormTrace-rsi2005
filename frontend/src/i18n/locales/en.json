@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "observatory": "IHR Observatory",
+    "countries": "Countries",
+    "newAnalysis": "New analysis"
+  },
+  "language": {
+    "label": "Analysis language",
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "hint": "Claude will generate all findings and proposals in the selected language"
+  },
+  "countries": {
+    "title": "Countries",
+    "subtitle": "Select a country to view its analyses or start a new one",
+    "addCountry": "Add country",
+    "noCountries": "No countries yet. Add one to get started.",
+    "analyses": "analyses",
+    "lastAnalysis": "Last analysis"
+  },
+  "analysis": {
+    "title": "Analyses",
+    "new": "New analysis",
+    "status": {
+      "corpus_pending": "Discovering corpus",
+      "corpus_ready": "Corpus ready — awaiting validation",
+      "analyzing": "Analyzing",
+      "complete": "Complete",
+      "error": "Error"
+    },
+    "created": "Created",
+    "completed": "Completed",
+    "sources": "Sources consulted",
+    "sourceDate": "Last reform",
+    "noSourceDate": "Date not available",
+    "reanalyzeHint": "Some sources may have been updated since this analysis was run. Consider starting a new analysis if reforms have been published.",
+    "scores": {
+      "scanner": "Scanner score",
+      "espar": "e-SPAR score",
+      "date": "e-SPAR reference date",
+      "delta": "Delta",
+      "overreporting": "Overreporting detected",
+      "aligned": "Aligned with self-report"
+    }
+  },
+  "corpus": {
+    "title": "Corpus discovery",
+    "subtitle": "Claude has identified the following normative instruments. Review and confirm before analysis begins.",
+    "include": "Include",
+    "review": "Review",
+    "discard": "Discard",
+    "laguna": "Not obtained",
+    "addManual": "Add instrument manually",
+    "confirm": "Confirm corpus and begin analysis",
+    "reason": "Reason",
+    "articles": "IHR articles",
+    "lastReform": "Last reform",
+    "moveToInclude": "Move to Include",
+    "moveToDiscard": "Move to Discard",
+    "moveToReview": "Move to Review",
+    "userNote": "Add note"
+  },
+  "blocks": {
+    "title": "Analysis by block",
+    "A": "Block A — Institutional architecture",
+    "B": "Block B — Core capacities",
+    "C": "Block C — Points of entry",
+    "D": "Block D — Measures on persons",
+    "E": "Block E — Data and documents",
+    "F": "Block F — Additional measures",
+    "G": "Block G — Compatibility check",
+    "SCORES": "C1 Score & reform proposals",
+    "analyze": "Analyze this block",
+    "analyzing": "Analyzing…",
+    "done": "Done",
+    "pending": "Pending"
+  },
+  "severity": {
+    "critical": "Priority attention",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "reforms": {
+    "title": "Reform proposals",
+    "instrument": "Recommended instrument",
+    "reason": "Why this instrument",
+    "gap": "Current gap",
+    "proposed": "Proposed text",
+    "lateral": "Lateral effects",
+    "viability": "Viability"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "export": "Export"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "noApiKey": "API key not configured on the server."
+  }
+}
