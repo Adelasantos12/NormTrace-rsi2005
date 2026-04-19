@@ -55,7 +55,7 @@ app.add_middleware(
 )
 
 claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-3-5-sonnet-20241022"
 
 
 # ── Countries ──────────────────────────────────────────────────────────────

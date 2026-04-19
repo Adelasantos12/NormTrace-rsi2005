@@ -26,9 +26,14 @@ export default function CountriesPage({ onSelectAnalysis }) {
   async function handleAddCountry(e) {
     e.preventDefault()
     const c = await createCountry(newCountry)
-    setCountries(prev => [...prev, c])
+    setCountries(prev => {
+      const exists = prev.find(p => p.iso3 === c.iso3)
+      if (exists) return prev
+      return [...prev, c]
+    })
     setNewCountry({ iso3: '', name_en: '', legal_system: 'civil_law', is_federal: 'no' })
     setShowAdd(false)
+    toggleCountry(c)
   }
 
 
