@@ -1,3 +1,14 @@
+const envBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+const runtimeBase = typeof window !== 'undefined'
+  ? (new URLSearchParams(window.location.search).get('api') || '').trim().replace(/\/+$/, '')
+  : '';
+
+const BASE = runtimeBase || envBase || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
+if (import.meta.env.PROD && !BASE) {
+  console.error(
+    '[NormTrace] Missing API base URL. Configure VITE_API_URL in Vercel, or open the app with ?api=https://your-backend.railway.app'
+  );
 const envBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
 const runtimeBase = typeof window !== 'undefined'
   ? (new URLSearchParams(window.location.search).get('api') || '').trim().replace(/\/+$/, '')
