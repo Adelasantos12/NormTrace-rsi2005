@@ -9,7 +9,7 @@
     "en": "Anglais",
     "es": "Espagnol",
     "fr": "Français",
-    "hint": "Claude génèrera tous les résultats et propositions dans la langue sélectionnée"
+    "hint": "Le moteur d'analyse générera tous les résultats et propositions dans la langue sélectionnée"
   },
   "countries": {
     "title": "Pays",
@@ -46,7 +46,7 @@
   },
   "corpus": {
     "title": "Découverte du corpus",
-    "subtitle": "Claude a identifié les instruments normatifs suivants. Vérifiez et confirmez avant de lancer l'analyse.",
+    "subtitle": "Le moteur d'analyse a identifié les instruments normatifs suivants. Vérifiez et confirmez avant de lancer l'analyse.",
     "include": "Inclure",
     "review": "Réviser",
     "discard": "Écarter",
