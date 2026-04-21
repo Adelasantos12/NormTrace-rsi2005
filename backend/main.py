@@ -46,9 +46,21 @@ seed_mexico()
 
 app = FastAPI(title="IHR Normative Observatory", version="1.0.0")
 
+frontend_origins = [
+    origin.strip()
+    for origin in (
+        f"{os.getenv('FRONTEND_URL', '')},{os.getenv('FRONTEND_URLS', '')}"
+    ).split(",")
+    if origin.strip()
+]
+if not frontend_origins:
+    frontend_origins = ["http://localhost:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
+    allow_origins=frontend_origins,
+    # Also allow Vercel preview URLs without requiring redeploys/env edits.
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
