@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getCountries, createCountry, createAnalysis, getAnalyses } from '../lib/api'
+import { getCountries, createCountry, createAnalysis, getAnalyses, getApiBase } from '../lib/api'
 
 const STATUS_COLORS = {
   complete: '#3B6D11',
@@ -13,6 +13,7 @@ const STATUS_COLORS = {
 export default function CountriesPage({ onSelectAnalysis }) {
   const { t } = useTranslation()
   const [countries, setCountries] = useState([])
+  const [error, setError] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [newCountry, setNewCountry] = useState({ iso3: '', name_en: '', legal_system: 'civil_law', is_federal: 'no' })
   const [loading, setLoading] = useState(true)
@@ -20,20 +21,28 @@ export default function CountriesPage({ onSelectAnalysis }) {
   const [analyses, setAnalyses] = useState({})  // iso3 → [analysis]
 
   useEffect(() => {
-    getCountries().then(setCountries).finally(() => setLoading(false))
+    getCountries()
+      .then(setCountries)
+      .catch((err) => setError(err.message || 'Failed to load countries'))
+      .finally(() => setLoading(false))
   }, [])
 
   async function handleAddCountry(e) {
     e.preventDefault()
-    const c = await createCountry(newCountry)
-    setCountries(prev => {
-      const exists = prev.find(p => p.iso3 === c.iso3)
-      if (exists) return prev
-      return [...prev, c]
-    })
-    setNewCountry({ iso3: '', name_en: '', legal_system: 'civil_law', is_federal: 'no' })
-    setShowAdd(false)
-    toggleCountry(c)
+    setError('')
+    try {
+      const c = await createCountry(newCountry)
+      setCountries(prev => {
+        const exists = prev.find(p => p.iso3 === c.iso3)
+        if (exists) return prev
+        return [...prev, c]
+      })
+      setNewCountry({ iso3: '', name_en: '', legal_system: 'civil_law', is_federal: 'no' })
+      setShowAdd(false)
+      toggleCountry(c)
+    } catch (err) {
+      setError(err.message || 'Could not create country')
+    }
   }
 
 
@@ -132,6 +141,15 @@ export default function CountriesPage({ onSelectAnalysis }) {
             <button type="submit" style={btnStyle}>{t('actions.confirm')}</button>
           </div>
         </form>
+      )}
+
+      {error && (
+        <div style={{ marginBottom: '12px', color: '#A32D2D', fontSize: '12px' }}>
+          <div>{error}</div>
+          <div style={{ marginTop: '4px', color: '#73726c' }}>
+            API base: {getApiBase() || '(not configured)'}
+          </div>
+        </div>
       )}
 
       {/* Country list */}
