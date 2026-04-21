@@ -61,7 +61,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022")
 
 
 def get_claude_client():
