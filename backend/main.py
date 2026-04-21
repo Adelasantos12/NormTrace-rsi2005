@@ -19,9 +19,6 @@ from skill_prompt import (
     BLOCK_ANALYSIS_PROMPTS
 )
 
-
-Base.metadata.create_all(bind=engine)
-
 def seed_mexico():
     from database import SessionLocal
     from models import Country
@@ -41,21 +38,50 @@ def seed_mexico():
     finally:
         db.close()
 
-seed_mexico()
-
-
 app = FastAPI(title="IHR Normative Observatory", version="1.0.0")
+
+frontend_origins = [
+    origin.strip()
+    for origin in (
+        f"{os.getenv('FRONTEND_URL', '')},{os.getenv('FRONTEND_URLS', '')}"
+    ).split(",")
+    if origin.strip()
+]
+if not frontend_origins:
+    frontend_origins = ["http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
+    allow_origins=frontend_origins,
+    # Also allow Vercel preview URLs without requiring redeploys/env edits.
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-MODEL = "claude-3-5-sonnet-20241022"
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
+
+
+def get_claude_client():
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="ANTHROPIC_API_KEY is not configured on the backend."
+        )
+    return anthropic.Anthropic(api_key=api_key)
+
+
+@app.on_event("startup")
+def bootstrap_db():
+    """Initialize DB tables/seed without crashing container healthchecks."""
+    try:
+        Base.metadata.create_all(bind=engine)
+        seed_mexico()
+    except Exception as e:
+        # Keep app process alive so /health can respond; API routes will fail until DB is reachable.
+        print(f"[startup] DB bootstrap skipped: {e}")
 
 
 # ── Countries ──────────────────────────────────────────────────────────────
@@ -155,19 +181,21 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
         languages=lang_hints.get(a.language, "English"),
     )
 
+    claude = get_claude_client()
+
     async def stream():
         full_text = ""
-        with claude.messages.stream(
-            model=MODEL,
-            max_tokens=4096,
-            system=get_system_prompt(a.language),
-            messages=[{"role": "user", "content": discovery_prompt}],
-        ) as s:
-            for text in s.text_stream:
-                full_text += text
-                yield f"data: {json.dumps({'chunk': text})}\n\n"
-
         try:
+            with claude.messages.stream(
+                model=MODEL,
+                max_tokens=4096,
+                system=get_system_prompt(a.language),
+                messages=[{"role": "user", "content": discovery_prompt}],
+            ) as s:
+                for text in s.text_stream:
+                    full_text += text
+                    yield f"data: {json.dumps({'chunk': text})}\n\n"
+
             start = full_text.find("{")
             end = full_text.rfind("}") + 1
             parsed = json.loads(full_text[start:end])
@@ -279,19 +307,21 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
         blocks_summary=json.dumps(a.results or {}, indent=2),
     )
 
+    claude = get_claude_client()
+
     async def stream():
         full_text = ""
-        with claude.messages.stream(
-            model=MODEL,
-            max_tokens=4096,
-            system=get_system_prompt(a.language),
-            messages=[{"role": "user", "content": prompt}],
-        ) as s:
-            for text in s.text_stream:
-                full_text += text
-                yield f"data: {json.dumps({'chunk': text})}\n\n"
-
         try:
+            with claude.messages.stream(
+                model=MODEL,
+                max_tokens=4096,
+                system=get_system_prompt(a.language),
+                messages=[{"role": "user", "content": prompt}],
+            ) as s:
+                for text in s.text_stream:
+                    full_text += text
+                    yield f"data: {json.dumps({'chunk': text})}\n\n"
+
             start = full_text.find("{")
             end = full_text.rfind("}") + 1
             parsed = json.loads(full_text[start:end])
