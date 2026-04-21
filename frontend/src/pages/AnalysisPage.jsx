@@ -24,6 +24,7 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   const [esparInput, setEsparInput] = useState({ score: '', date: '' })
   const [showAddItem, setShowAddItem] = useState(false)
   const [newItem, setNewItem] = useState({ name: '', instrument_type: '', sector: '', url: '', last_reform_label: '', ihr_articles: '' })
+  const [uiError, setUiError] = useState('')
   const cancelStream = useRef(null)
 
   useEffect(() => {
@@ -35,82 +36,126 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
 
 
   useEffect(() => {
-    getCorpus(analysis.id).then(setCorpus)
+    getCorpus(analysis.id).then(setCorpus).catch((err) => setUiError(err.message || 'Failed to load corpus'))
     const interval = setInterval(async () => {
-      const fresh = await getAnalysis(analysis.id)
-      setAnalysis(fresh)
-      if (fresh.status === 'complete') clearInterval(interval)
+      try {
+        const fresh = await getAnalysis(analysis.id)
+        setAnalysis(fresh)
+        if (fresh.status === 'complete') clearInterval(interval)
+      } catch (err) {
+        setUiError(err.message || 'Failed to refresh analysis')
+      }
     }, 5000)
     return () => clearInterval(interval)
   }, [analysis.id])
 
   // Corpus discovery
   function startDiscovery() {
+    setUiError('')
     setStreaming('DISCOVERY')
     setStreamText(p => ({ ...p, DISCOVERY: '' }))
     cancelStream.current = streamDiscoverCorpus(
       analysis.id,
       (chunk) => setStreamText(p => ({ ...p, DISCOVERY: (p.DISCOVERY || '') + chunk })),
       async () => {
-        setStreaming(null)
-        const [fresh, freshCorpus] = await Promise.all([
-          getAnalysis(analysis.id),
-          getCorpus(analysis.id),
-        ])
-        setAnalysis(fresh)
-        setCorpus(freshCorpus)
+        try {
+          setStreaming(null)
+          const [fresh, freshCorpus] = await Promise.all([
+            getAnalysis(analysis.id),
+            getCorpus(analysis.id),
+          ])
+          setAnalysis(fresh)
+          setCorpus(freshCorpus)
+        } catch (err) {
+          setUiError(err.message || 'Discovery finished with errors')
+        }
       },
-      (err) => { setStreaming(null); console.error(err) }
+      async (err) => {
+        setStreaming(null)
+        setUiError(err.message || 'Corpus discovery failed')
+        try {
+          const fresh = await getAnalysis(analysis.id)
+          setAnalysis(fresh)
+        } catch (_) {}
+      }
     )
   }
 
   // Block analysis
   function startBlockAnalysis(block) {
+    setUiError('')
     setStreaming(block)
     setStreamText(p => ({ ...p, [block]: '' }))
     cancelStream.current = streamAnalyzeBlock(
       analysis.id, block,
       (chunk) => setStreamText(p => ({ ...p, [block]: (p[block] || '') + chunk })),
       async () => {
-        setStreaming(null)
-        const fresh = await getAnalysis(analysis.id)
-        setAnalysis(fresh)
+        try {
+          setStreaming(null)
+          const fresh = await getAnalysis(analysis.id)
+          setAnalysis(fresh)
+        } catch (err) {
+          setUiError(err.message || `Block ${block} finished with errors`)
+        }
       },
-      (err) => { setStreaming(null); console.error(err) }
+      (err) => {
+        setStreaming(null)
+        setUiError(err.message || `Block ${block} failed`)
+      }
     )
   }
 
   async function handleClassify(itemId, newCls) {
-    const updated = await updateCorpusItem(itemId, { classification: newCls, user_confirmed: 'yes' })
-    setCorpus(prev => prev.map(i => i.id === itemId ? updated : i))
+    try {
+      const updated = await updateCorpusItem(itemId, { classification: newCls, user_confirmed: 'yes' })
+      setCorpus(prev => prev.map(i => i.id === itemId ? updated : i))
+    } catch (err) {
+      setUiError(err.message || 'Failed to update corpus item')
+    }
   }
 
   async function handleAddItem(e) {
     e.preventDefault()
-    const item = await addCorpusItem(analysis.id, { ...newItem, classification: 'include' })
-    setCorpus(prev => [...prev, item])
-    setNewItem({ name: '', instrument_type: '', sector: '', url: '', last_reform_label: '', ihr_articles: '' })
-    setShowAddItem(false)
+    try {
+      const item = await addCorpusItem(analysis.id, { ...newItem, classification: 'include' })
+      setCorpus(prev => [...prev, item])
+      setNewItem({ name: '', instrument_type: '', sector: '', url: '', last_reform_label: '', ihr_articles: '' })
+      setShowAddItem(false)
+    } catch (err) {
+      setUiError(err.message || 'Failed to add corpus item')
+    }
   }
 
   async function handleConfirmCorpus() {
-    await confirmCorpus(analysis.id)
-    const fresh = await getAnalysis(analysis.id)
-    setAnalysis(fresh)
-    setActiveTab('A')
+    try {
+      await confirmCorpus(analysis.id)
+      const fresh = await getAnalysis(analysis.id)
+      setAnalysis(fresh)
+      setActiveTab('A')
+    } catch (err) {
+      setUiError(err.message || 'Failed to confirm corpus')
+    }
   }
 
   async function handleLangChange(lang) {
-    await updateLanguage(analysis.id, lang)
-    const fresh = await getAnalysis(analysis.id)
-    setAnalysis(fresh)
+    try {
+      await updateLanguage(analysis.id, lang)
+      const fresh = await getAnalysis(analysis.id)
+      setAnalysis(fresh)
+    } catch (err) {
+      setUiError(err.message || 'Failed to update analysis language')
+    }
   }
 
   async function handleEsparSave() {
     if (!esparInput.score || !esparInput.date) return
-    await updateEsparScore(analysis.id, parseInt(esparInput.score), esparInput.date)
-    const fresh = await getAnalysis(analysis.id)
-    setAnalysis(fresh)
+    try {
+      await updateEsparScore(analysis.id, parseInt(esparInput.score), esparInput.date)
+      const fresh = await getAnalysis(analysis.id)
+      setAnalysis(fresh)
+    } catch (err) {
+      setUiError(err.message || 'Failed to save e-SPAR score')
+    }
   }
 
   const includedCorpus = corpus.filter(i => i.classification === 'include')
@@ -177,6 +222,12 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
       )}
 
       {/* Tabs */}
+      {uiError && (
+        <div style={{ marginBottom: '1rem', color: '#A32D2D', fontSize: '12px' }}>
+          {uiError}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e5e3dc', marginBottom: '1.5rem', overflowX: 'auto' }}>
         <Tab label={t('corpus.title')} id="corpus" active={activeTab} onClick={setActiveTab} />
         {BLOCKS.map(b => (
