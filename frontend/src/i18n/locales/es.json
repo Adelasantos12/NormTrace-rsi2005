@@ -9,7 +9,7 @@
     "en": "Inglés",
     "es": "Español",
     "fr": "Francés",
-    "hint": "Claude generará todos los hallazgos y propuestas en el idioma seleccionado"
+    "hint": "El motor de análisis generará todos los hallazgos y propuestas en el idioma seleccionado"
   },
   "countries": {
     "title": "Países",
@@ -46,7 +46,7 @@
   },
   "corpus": {
     "title": "Descubrimiento de corpus",
-    "subtitle": "Claude ha identificado los siguientes instrumentos normativos. Revisa y confirma antes de iniciar el análisis.",
+    "subtitle": "El motor de análisis ha identificado los siguientes instrumentos normativos. Revisa y confirma antes de iniciar el análisis.",
     "include": "Incluir",
     "review": "Revisar",
     "discard": "Descartar",

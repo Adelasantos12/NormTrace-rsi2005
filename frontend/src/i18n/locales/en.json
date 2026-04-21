@@ -9,7 +9,7 @@
     "en": "English",
     "es": "Spanish",
     "fr": "French",
-    "hint": "Claude will generate all findings and proposals in the selected language"
+    "hint": "The analysis engine will generate all findings and proposals in the selected language"
   },
   "countries": {
     "title": "Countries",
@@ -46,7 +46,7 @@
   },
   "corpus": {
     "title": "Corpus discovery",
-    "subtitle": "Claude has identified the following normative instruments. Review and confirm before analysis begins.",
+    "subtitle": "The analysis engine identified the following normative instruments. Review and confirm before analysis begins.",
     "include": "Include",
     "review": "Review",
     "discard": "Discard",
