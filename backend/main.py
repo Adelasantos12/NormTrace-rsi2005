@@ -401,6 +401,49 @@ def update_espar_score(aid: int, score: int, reference_date: str,
     return {"ok": True}
 
 
+@app.get("/analyses/{aid}/export")
+def export_analysis(aid: int, db: Session = Depends(get_db)):
+    a = db.query(Analysis).filter(Analysis.id == aid).first()
+    if not a:
+        raise HTTPException(404, "Not found")
+
+    # Flatten results for quantitative analysis
+    flat_data = {
+        "analysis_id": a.id,
+        "country": a.country.iso3,
+        "language": a.language,
+        "c1_score_scanner": a.c1_score_scanner,
+        "c1_score_espar": a.c1_score_espar,
+        "status": a.status,
+        "blocks": {}
+    }
+
+    if a.results:
+        for block, data in a.results.items():
+            if block == "SCORES":
+                flat_data["scores"] = {
+                    "c1_1": data.get("c1_1", {}).get("score"),
+                    "c1_2": data.get("c1_2", {}).get("score"),
+                    "c1_3": data.get("c1_3", {}).get("score"),
+                    "c1_4": data.get("c1_4", {}).get("score"),
+                    "c1_5": data.get("c1_5", {}).get("score"),
+                    "total": data.get("total_weighted")
+                }
+            else:
+                block_results = []
+                articles = data.get("articles", {})
+                for art_id, art_data in articles.items():
+                    block_results.append({
+                        "article": art_id,
+                        "coverage": art_data.get("coverage_found"),
+                        "attention": art_data.get("attention_level"),
+                        "chain": art_data.get("chain", {})
+                    })
+                flat_data["blocks"][block] = block_results
+
+    return flat_data
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "1.0.0"}
