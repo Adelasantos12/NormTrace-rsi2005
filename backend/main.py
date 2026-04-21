@@ -6,6 +6,7 @@ from datetime import datetime
 import anthropic
 import json
 import os
+import traceback
 
 from database import get_db, engine
 from models import Base, Country, Analysis, SourceDocument, CorpusItem
@@ -249,6 +250,8 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
         except Exception as e:
             a.status = "error"
             db.commit()
+            print(f"[discover_corpus] model={MODEL} error={e}")
+            traceback.print_exc()
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
@@ -377,6 +380,8 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
             yield f"data: {json.dumps({'block': block, 'done': True})}\n\n"
 
         except Exception as e:
+            print(f"[analyze_block:{block}] model={MODEL} error={e}")
+            traceback.print_exc()
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")

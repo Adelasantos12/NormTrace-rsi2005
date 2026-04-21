@@ -139,6 +139,7 @@ function streamEndpoint(path, method, onChunk, onDone, onError) {
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let terminalEventReceived = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -151,11 +152,20 @@ function streamEndpoint(path, method, onChunk, onDone, onError) {
           try {
             const msg = JSON.parse(line.slice(6))
             if (msg.chunk) onChunk(msg.chunk)
-            if (msg.done) onDone(msg)
-            if (msg.error) onError(new Error(msg.error))
+            if (msg.done) {
+              terminalEventReceived = true
+              onDone(msg)
+            }
+            if (msg.error) {
+              terminalEventReceived = true
+              onError(new Error(msg.error))
+            }
           } catch (_) {}
         }
       }
+
+      // Defensive fallback: some servers/proxies may end stream without final SSE event.
+      if (!terminalEventReceived) onDone({ done: true, implicit: true })
     })
     .catch((err) => {
       if (err.name !== 'AbortError') onError(err)

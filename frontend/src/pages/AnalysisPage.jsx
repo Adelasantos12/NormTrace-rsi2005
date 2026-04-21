@@ -260,9 +260,9 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
             </div>
           )}
 
-          {streaming === 'DISCOVERY' && streamText.DISCOVERY && (
+          {streaming === 'DISCOVERY' && (
             <pre style={{ fontSize: '11px', color: '#5F5E5A', background: '#f9f8f5', padding: '12px', borderRadius: '6px', whiteSpace: 'pre-wrap', marginBottom: '1rem' }}>
-              {streamText.DISCOVERY}
+              {streamText.DISCOVERY || 'Working on corpus discovery…'}
             </pre>
           )}
 
