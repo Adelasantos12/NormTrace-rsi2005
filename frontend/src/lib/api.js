@@ -9,6 +9,13 @@ if (import.meta.env.PROD && !BASE) {
   console.error(
     '[NormTrace] Missing API base URL. Configure VITE_API_URL in Vercel, ' +
     'or open the app with ?api=https://your-backend.railway.app'
+
+const BASE = envBase || (import.meta.env.PROD ? '/api' : 'http://localhost:8000')
+
+if (import.meta.env.PROD && !envBase) {
+  console.warn(
+    '[NormTrace] VITE_API_URL is not configured. Using /api fallback. ' +
+    'If your deployment has no /api rewrite/proxy, requests will fail.'
   )
 }
 
