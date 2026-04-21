@@ -1,4 +1,13 @@
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const envBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
+
+const BASE = envBase || (import.meta.env.PROD ? '/api' : 'http://localhost:8000')
+
+if (import.meta.env.PROD && !envBase) {
+  console.warn(
+    '[NormTrace] VITE_API_URL is not configured. Using /api fallback. ' +
+    'If your deployment has no /api rewrite/proxy, requests will fail.'
+  )
+}
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
