@@ -83,6 +83,28 @@ def bootstrap_db():
     except Exception as e:
         # Keep app process alive so /health can respond; API routes will fail until DB is reachable.
         print(f"[startup] DB bootstrap skipped: {e}")
+MODEL = "claude-3-5-sonnet-20241022"
+
+
+def get_claude_client():
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="ANTHROPIC_API_KEY is not configured on the backend."
+        )
+    return anthropic.Anthropic(api_key=api_key)
+
+
+@app.on_event("startup")
+def bootstrap_db():
+    """Initialize DB tables/seed without crashing container healthchecks."""
+    try:
+        Base.metadata.create_all(bind=engine)
+        seed_mexico()
+    except Exception as e:
+        # Keep app process alive so /health can respond; API routes will fail until DB is reachable.
+        print(f"[startup] DB bootstrap skipped: {e}")
 
 
 # ── Countries ──────────────────────────────────────────────────────────────
