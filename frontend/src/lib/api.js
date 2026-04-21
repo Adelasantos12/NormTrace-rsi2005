@@ -1,3 +1,25 @@
+function normalizeBase(url) {
+  return (url || '').trim().replace(/\/+$/, '')
+}
+
+function resolveBase() {
+  const runtimeBase =
+    typeof window !== 'undefined'
+      ? normalizeBase(new URLSearchParams(window.location.search).get('api'))
+      : ''
+  const envBase = normalizeBase(import.meta.env.VITE_API_URL)
+
+  if (runtimeBase) return runtimeBase
+  if (envBase) return envBase
+  if (!import.meta.env.PROD) return 'http://localhost:8000'
+  return ''
+}
+
+const BASE = resolveBase()
+
+async function request(path, options = {}) {
+  if (!BASE) {
+    throw new Error('Backend URL not configured. Set VITE_API_URL in Vercel.')
 const envBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
 const runtimeBase = typeof window !== 'undefined'
   ? (new URLSearchParams(window.location.search).get('api') || '').trim().replace(/\/+$/, '')
@@ -70,9 +92,10 @@ export const updateNotes = (aid, notes) =>
     body: JSON.stringify({ notes }),
   })
 export const updateEsparScore = (aid, score, reference_date) =>
-  request(`/analyses/${aid}/espar-score?score=${score}&reference_date=${encodeURIComponent(reference_date)}`, {
-    method: 'PATCH',
-  })
+  request(
+    `/analyses/${aid}/espar-score?score=${score}&reference_date=${encodeURIComponent(reference_date)}`,
+    { method: 'PATCH' }
+  )
 
 // Corpus
 export const getCorpus = (aid) => request(`/analyses/${aid}/corpus`)
@@ -89,7 +112,7 @@ export const addCorpusItem = (aid, payload) =>
 export const confirmCorpus = (aid) =>
   request(`/analyses/${aid}/confirm-corpus`, { method: 'POST' })
 
-// Streaming — returns an EventSource-like async iterator
+// Streaming
 export function streamDiscoverCorpus(aid, onChunk, onDone, onError) {
   return streamEndpoint(`/analyses/${aid}/discover-corpus`, 'POST', onChunk, onDone, onError)
 }
@@ -100,6 +123,10 @@ export function streamAnalyzeBlock(aid, block, onChunk, onDone, onError) {
 
 function streamEndpoint(path, method, onChunk, onDone, onError) {
   const controller = new AbortController()
+  if (!BASE) {
+    onError(new Error('Backend URL not configured. Set VITE_API_URL in Vercel.'))
+    return () => {}
+  }
 
   if (!BASE) {
     onError(new Error('Backend URL not configured. Set VITE_API_URL in Vercel.'))
