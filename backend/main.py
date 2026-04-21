@@ -83,7 +83,7 @@ def bootstrap_db():
     except Exception as e:
         # Keep app process alive so /health can respond; API routes will fail until DB is reachable.
         print(f"[startup] DB bootstrap skipped: {e}")
-MODEL = "claude-3-5-sonnet-20241022"
+MODEL = "claude-3-5-haiku-20241022"
 
 
 def get_claude_client():
