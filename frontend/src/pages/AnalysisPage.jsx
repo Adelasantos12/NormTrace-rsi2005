@@ -158,6 +158,11 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
     }
   }
 
+  function handleExport() {
+    const apiBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '') || 'http://localhost:8000';
+    window.open(`${apiBase}/analyses/${analysis.id}/export`, '_blank');
+  }
+
   const includedCorpus = corpus.filter(i => i.classification === 'include')
   const reviewCorpus = corpus.filter(i => i.classification === 'review')
   const discardedCorpus = corpus.filter(i => i.classification === 'discard')
@@ -181,6 +186,11 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
 
         {/* Language selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {analysis.status === 'complete' && (
+            <button onClick={handleExport} style={{ ...btnSecondary, marginRight: '8px', background: '#f1efe8' }}>
+              📥 Export JSON
+            </button>
+          )}
           <span style={{ fontSize: '11px', color: '#73726c' }}>{t('language.label')}:</span>
           {['en', 'es', 'fr'].map(l => (
             <button
