@@ -1,6 +1,23 @@
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const envBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+const runtimeBase = typeof window !== 'undefined'
+  ? (new URLSearchParams(window.location.search).get('api') || '').trim().replace(/\/+$/, '')
+  : '';
+
+const BASE = runtimeBase || envBase || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
+if (import.meta.env.PROD && !BASE) {
+  console.error(
+    '[NormTrace] Missing API base URL. Configure VITE_API_URL in Vercel, or open the app with ?api=https://your-backend.railway.app'
+  );
+}
 
 async function request(path, options = {}) {
+  if (!BASE) {
+    throw new Error(
+      'Backend URL not configured. Set VITE_API_URL in Vercel (or use ?api=https://your-backend.railway.app).'
+    )
+  }
+
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
@@ -64,6 +81,11 @@ export function streamAnalyzeBlock(aid, block, onChunk, onDone, onError) {
 
 function streamEndpoint(path, method, onChunk, onDone, onError) {
   const controller = new AbortController()
+
+  if (!BASE) {
+    onError(new Error('Backend URL not configured. Set VITE_API_URL in Vercel.'))
+    return () => {}
+  }
 
   fetch(`${BASE}${path}`, { method, signal: controller.signal })
     .then(async (res) => {
