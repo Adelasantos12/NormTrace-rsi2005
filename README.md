@@ -109,12 +109,25 @@ In the backend service settings → Variables:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-your-key-here
+ANTHROPIC_MODEL=claude-3-5-haiku-20241022
 FRONTEND_URL=https://your-frontend.vercel.app
 ```
 
 Railway automatically provides `DATABASE_URL` and `PORT`.
 
-### Step 4 — Deploy frontend to Vercel
+### Step 4 — Exporting Data for Analysis
+
+Once an analysis is complete, use the **"Export JSON"** button in the UI or access:
+`GET /analyses/{id}/export`
+
+This returns a flattened JSON structure containing:
+- Quantitative C1 scores (1.1 to 1.5)
+- Normative chain status (Norm → Actor → Authority → Enforceability)
+- Severity levels for all findings.
+
+Perfect for comparative legal analysis in Excel, Python, or R.
+
+### Step 5 — Deploy frontend to Vercel
 
 ```bash
 cd frontend
