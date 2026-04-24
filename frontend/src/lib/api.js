@@ -1,36 +1,3 @@
-function normalizeBase(url) {
-  return (url || '').trim().replace(/\/+$/, '')
-}
-
-function resolveBase() {
-  const runtimeBase =
-    typeof window !== 'undefined'
-      ? normalizeBase(new URLSearchParams(window.location.search).get('api'))
-      : ''
-  const envBase = normalizeBase(import.meta.env.VITE_API_URL)
-
-  if (runtimeBase) return runtimeBase
-  if (envBase) return envBase
-  if (!import.meta.env.PROD) return 'http://localhost:8000'
-  return ''
-}
-
-const BASE = resolveBase()
-
-async function request(path, options = {}) {
-  if (!BASE) {
-    throw new Error('Backend URL not configured. Set VITE_API_URL in Vercel.')
-const envBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
-const runtimeBase = typeof window !== 'undefined'
-  ? (new URLSearchParams(window.location.search).get('api') || '').trim().replace(/\/+$/, '')
-  : '';
-
-const BASE = runtimeBase || envBase || (import.meta.env.PROD ? '' : 'http://localhost:8000');
-
-if (import.meta.env.PROD && !BASE) {
-  console.error(
-    '[NormTrace] Missing API base URL. Configure VITE_API_URL in Vercel, or open the app with ?api=https://your-backend.railway.app'
-  );
 const envBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
 const runtimeBase = typeof window !== 'undefined'
   ? (new URLSearchParams(window.location.search).get('api') || '').trim().replace(/\/+$/, '')
@@ -42,13 +9,6 @@ if (import.meta.env.PROD && !BASE) {
   console.error(
     '[NormTrace] Missing API base URL. Configure VITE_API_URL in Vercel, ' +
     'or open the app with ?api=https://your-backend.railway.app'
-
-const BASE = envBase || (import.meta.env.PROD ? '/api' : 'http://localhost:8000')
-
-if (import.meta.env.PROD && !envBase) {
-  console.warn(
-    '[NormTrace] VITE_API_URL is not configured. Using /api fallback. ' +
-    'If your deployment has no /api rewrite/proxy, requests will fail.'
   )
 }
 
@@ -113,27 +73,27 @@ export const confirmCorpus = (aid) =>
   request(`/analyses/${aid}/confirm-corpus`, { method: 'POST' })
 
 // Streaming
-export function streamDiscoverCorpus(aid, onChunk, onDone, onError) {
-  return streamEndpoint(`/analyses/${aid}/discover-corpus`, 'POST', onChunk, onDone, onError)
+export function streamDiscoverCorpus(aid, payload, onChunk, onDone, onError) {
+  return streamEndpoint(`/analyses/${aid}/discover-corpus`, 'POST', payload, onChunk, onDone, onError)
 }
 
 export function streamAnalyzeBlock(aid, block, onChunk, onDone, onError) {
-  return streamEndpoint(`/analyses/${aid}/analyze/${block}`, 'POST', onChunk, onDone, onError)
+  return streamEndpoint(`/analyses/${aid}/analyze/${block}`, 'POST', null, onChunk, onDone, onError)
 }
 
-function streamEndpoint(path, method, onChunk, onDone, onError) {
+function streamEndpoint(path, method, payload, onChunk, onDone, onError) {
   const controller = new AbortController()
   if (!BASE) {
     onError(new Error('Backend URL not configured. Set VITE_API_URL in Vercel.'))
     return () => {}
   }
 
-  if (!BASE) {
-    onError(new Error('Backend URL not configured. Set VITE_API_URL in Vercel.'))
-    return () => {}
-  }
-
-  fetch(`${BASE}${path}`, { method, signal: controller.signal })
+  fetch(`${BASE}${path}`, {
+    method,
+    headers: payload ? { 'Content-Type': 'application/json' } : {},
+    body: payload ? JSON.stringify(payload) : undefined,
+    signal: controller.signal,
+  })
     .then(async (res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const reader = res.body.getReader()
