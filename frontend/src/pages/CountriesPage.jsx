@@ -56,9 +56,21 @@ export default function CountriesPage({ onSelectAnalysis }) {
     setError('')
 
     try {
-      if (!analyses[country.iso3]) {
-        const list = await getAnalyses(country.iso3)
+      let list = analyses[country.iso3]
+      if (!list) {
+        list = await getAnalyses(country.iso3)
         setAnalyses(prev => ({ ...prev, [country.iso3]: list }))
+      }
+
+      if (list && list.length > 0) {
+        onSelectAnalysis(country, list[0])
+      } else {
+        const analysis = await createAnalysis(country.iso3, 'en')
+        setAnalyses(prev => ({
+          ...prev,
+          [country.iso3]: [analysis, ...(prev[country.iso3] || [])],
+        }))
+        onSelectAnalysis(country, analysis)
       }
     } catch (err) {
       setError(err.message || 'Could not load analyses')

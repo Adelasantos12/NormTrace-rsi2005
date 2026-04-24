@@ -1,0 +1,10 @@
+
+> ihr-observatory-frontend@1.0.0 dev
+> vite --port 5173
+
+Port 5173 is in use, trying another one...
+
+  VITE v5.4.21  ready in 835 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
