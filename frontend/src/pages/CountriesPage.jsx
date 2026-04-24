@@ -47,23 +47,21 @@ export default function CountriesPage({ onSelectAnalysis }) {
 
 
   async function toggleCountry(country) {
-    let list = analyses[country.iso3];
-    if (!list) {
-      list = await getAnalyses(country.iso3);
-      setAnalyses(prev => ({ ...prev, [country.iso3]: list }));
+    if (expandedCountry === country.iso3) {
+      setExpandedCountry(null)
+      return
     }
 
-    if (list && list.length > 0) {
-      // Auto-load the most recent analysis
-      onSelectAnalysis(country, list[0]);
-    } else {
-      // Create a new analysis if none exists
-      const analysis = await createAnalysis(country.iso3, 'en');
-      setAnalyses(prev => ({
-        ...prev,
-        [country.iso3]: [analysis, ...(prev[country.iso3] || [])],
-      }));
-      onSelectAnalysis(country, analysis);
+    setExpandedCountry(country.iso3)
+    setError('')
+
+    try {
+      if (!analyses[country.iso3]) {
+        const list = await getAnalyses(country.iso3)
+        setAnalyses(prev => ({ ...prev, [country.iso3]: list }))
+      }
+    } catch (err) {
+      setError(err.message || 'Could not load analyses')
     }
   }
 
