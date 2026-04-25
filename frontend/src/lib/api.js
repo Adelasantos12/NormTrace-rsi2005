@@ -73,8 +73,8 @@ export const confirmCorpus = (aid) =>
   request(`/analyses/${aid}/confirm-corpus`, { method: 'POST' })
 
 // Streaming
-export function streamDiscoverCorpus(aid, payload, onChunk, onDone, onError) {
-  return streamEndpoint(`/analyses/${aid}/discover-corpus`, 'POST', payload, onChunk, onDone, onError)
+export function streamDiscoverCorpus(aid, onChunk, onDone, onError) {
+  return streamEndpoint(`/analyses/${aid}/discover-corpus`, 'POST', null, onChunk, onDone, onError)
 }
 
 export function streamAnalyzeBlock(aid, block, onChunk, onDone, onError) {
@@ -84,7 +84,9 @@ export function streamAnalyzeBlock(aid, block, onChunk, onDone, onError) {
 function streamEndpoint(path, method, payload, onChunk, onDone, onError) {
   const controller = new AbortController()
   if (!BASE) {
-    onError(new Error('Backend URL not configured. Set VITE_API_URL in Vercel.'))
+    if (typeof onError === 'function') {
+      onError(new Error('Backend URL not configured. Set VITE_API_URL in Vercel.'))
+    }
     return () => {}
   }
 
@@ -111,24 +113,30 @@ function streamEndpoint(path, method, payload, onChunk, onDone, onError) {
           if (!line.startsWith('data: ')) continue
           try {
             const msg = JSON.parse(line.slice(6))
-            if (msg.chunk) onChunk(msg.chunk)
+            if (msg.chunk && typeof onChunk === 'function') {
+              onChunk(msg.chunk)
+            }
             if (msg.done) {
               terminalEventReceived = true
-              onDone(msg)
+              if (typeof onDone === 'function') onDone(msg)
             }
             if (msg.error) {
               terminalEventReceived = true
-              onError(new Error(msg.error))
+              if (typeof onError === 'function') onError(new Error(msg.error))
             }
           } catch (_) {}
         }
       }
 
       // Defensive fallback: some servers/proxies may end stream without final SSE event.
-      if (!terminalEventReceived) onDone({ done: true, implicit: true })
+      if (!terminalEventReceived && typeof onDone === 'function') {
+        onDone({ done: true, implicit: true })
+      }
     })
     .catch((err) => {
-      if (err.name !== 'AbortError') onError(err)
+      if (err.name !== 'AbortError' && typeof onError === 'function') {
+        onError(err)
+      }
     })
 
   return () => controller.abort()
