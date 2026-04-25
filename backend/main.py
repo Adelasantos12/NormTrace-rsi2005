@@ -278,6 +278,7 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
     async def stream():
         try:
             tool_args_str = ""
+            full_raw_text = ""
             with claude.messages.stream(
                 model=MODEL,
                 max_tokens=4096,
@@ -289,13 +290,40 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
                 for event in s:
                     if event.type == "content_block_delta":
                         if event.delta.type == "text_delta":
+                            full_raw_text += event.delta.text
                             yield f"data: {json.dumps({'chunk': event.delta.text})}\n\n"
                         elif event.delta.type == "input_json_delta":
                             tool_args_str += event.delta.partial_json
                             yield f"data: {json.dumps({'chunk': event.delta.partial_json})}\n\n"
 
+            # Final attempt to get args from final message if stream was interrupted but message exists
+            final_msg = None
+            try:
+                final_msg = s.get_final_message()
+            except:
+                pass
+
+            if not tool_args_str.strip() and final_msg:
+                for block in final_msg.content:
+                    if block.type == "tool_use" and block.name == "submit_corpus":
+                        tool_args_str = json.dumps(block.input)
+                    if block.type == "text":
+                        full_raw_text += block.text
+
             if not tool_args_str.strip():
-                raise ValueError("Model failed to provide structured corpus data.")
+                # If tool use failed, maybe it's raw JSON in text? (fallback)
+                try:
+                    parsed = extract_json(full_raw_text)
+                    tool_args_str = json.dumps(parsed)
+                except:
+                    pass
+
+            if not tool_args_str.strip():
+                msg_info = f"Content types: {[b.type for b in final_msg.content]}" if final_msg else "No final message"
+                print(f"[discover_corpus] FAILED. {msg_info}. Raw text: {full_raw_text}")
+                raise ValueError(
+                    f"Model failed to provide structured corpus data. {msg_info}. Raw output: {full_raw_text[:500]}"
+                )
 
             parsed = json.loads(tool_args_str)
 
@@ -413,6 +441,7 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
     async def stream():
         try:
             tool_args_str = ""
+            full_raw_text = ""
             with claude.messages.stream(
                 model=MODEL,
                 max_tokens=4096,
@@ -424,13 +453,40 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
                 for event in s:
                     if event.type == "content_block_delta":
                         if event.delta.type == "text_delta":
+                            full_raw_text += event.delta.text
                             yield f"data: {json.dumps({'chunk': event.delta.text})}\n\n"
                         elif event.delta.type == "input_json_delta":
                             tool_args_str += event.delta.partial_json
                             yield f"data: {json.dumps({'chunk': event.delta.partial_json})}\n\n"
 
+            # Final attempt to get args from final message
+            final_msg = None
+            try:
+                final_msg = s.get_final_message()
+            except:
+                pass
+
+            if not tool_args_str.strip() and final_msg:
+                for block in final_msg.content:
+                    if block.type == "tool_use" and block.name == "submit_analysis":
+                        tool_args_str = json.dumps(block.input)
+                    if block.type == "text":
+                        full_raw_text += block.text
+
             if not tool_args_str.strip():
-                raise ValueError(f"Model failed to provide structured analysis for block {block}.")
+                # Fallback to extract from text
+                try:
+                    parsed = extract_json(full_raw_text)
+                    tool_args_str = json.dumps(parsed)
+                except:
+                    pass
+
+            if not tool_args_str.strip():
+                msg_info = f"Content types: {[b.type for b in final_msg.content]}" if final_msg else "No final message"
+                print(f"[analyze_block:{block}] FAILED. {msg_info}. Raw text: {full_raw_text}")
+                raise ValueError(
+                    f"Model failed to provide structured analysis for block {block}. {msg_info}. Raw output: {full_raw_text[:500]}"
+                )
 
             parsed = json.loads(tool_args_str)
 
