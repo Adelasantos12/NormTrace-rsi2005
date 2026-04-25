@@ -125,38 +125,6 @@ ANALYSIS_TOOL = {
 }
 
 
-def extract_json(text: str) -> dict:
-    """Robustly extract and parse JSON from Claude's response."""
-    # Remove potential markdown code blocks
-    text = text.strip()
-    if text.startswith("```json"):
-        text = text[len("```json"):]
-    if text.startswith("```"):
-        text = text[len("```"):]
-    if text.endswith("```"):
-        text = text[:-3]
-    text = text.strip()
-
-    # Find the first { and last }
-    start = text.find("{")
-    end = text.rfind("}") + 1
-    if start == -1 or end == 0:
-        raise ValueError("No JSON object found in response")
-
-    json_str = text[start:end]
-
-    # Attempt standard parse
-    try:
-        return json.loads(json_str)
-    except json.JSONDecodeError:
-        # Claude sometimes leaves trailing commas or uses single quotes
-        # A very basic cleanup for common LLM artifacts
-        import re
-        # Remove trailing commas in objects/arrays
-        json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
-        return json.loads(json_str)
-
-
 app = FastAPI(title="IHR Normative Observatory", version="1.0.0")
 
 frontend_origins = [
@@ -319,11 +287,15 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
                 tool_choice={"type": "tool", "name": "submit_corpus"}
             ) as s:
                 for event in s:
-                    if event.type == "text_delta":
-                        yield f"data: {json.dumps({'chunk': event.text})}\n\n"
-                    elif event.type == "input_json_delta":
-                        tool_args_str += event.partial_json
-                        yield f"data: {json.dumps({'chunk': event.partial_json})}\n\n"
+                    if event.type == "content_block_delta":
+                        if event.delta.type == "text_delta":
+                            yield f"data: {json.dumps({'chunk': event.delta.text})}\n\n"
+                        elif event.delta.type == "input_json_delta":
+                            tool_args_str += event.delta.partial_json
+                            yield f"data: {json.dumps({'chunk': event.delta.partial_json})}\n\n"
+
+            if not tool_args_str.strip():
+                raise ValueError("Model failed to provide structured corpus data.")
 
             parsed = json.loads(tool_args_str)
 
@@ -450,11 +422,15 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
                 tool_choice={"type": "tool", "name": "submit_analysis"}
             ) as s:
                 for event in s:
-                    if event.type == "text_delta":
-                        yield f"data: {json.dumps({'chunk': event.text})}\n\n"
-                    elif event.type == "input_json_delta":
-                        tool_args_str += event.partial_json
-                        yield f"data: {json.dumps({'chunk': event.partial_json})}\n\n"
+                    if event.type == "content_block_delta":
+                        if event.delta.type == "text_delta":
+                            yield f"data: {json.dumps({'chunk': event.delta.text})}\n\n"
+                        elif event.delta.type == "input_json_delta":
+                            tool_args_str += event.delta.partial_json
+                            yield f"data: {json.dumps({'chunk': event.delta.partial_json})}\n\n"
+
+            if not tool_args_str.strip():
+                raise ValueError(f"Model failed to provide structured analysis for block {block}.")
 
             parsed = json.loads(tool_args_str)
 
