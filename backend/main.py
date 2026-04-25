@@ -42,54 +42,58 @@ def seed_mexico():
 
 CORPUS_TOOL = {
     "name": "submit_corpus",
-    "description": "Submit the discovered normative corpus for a country.",
+    "description": "Submit the discovered normative corpus. Limit to most relevant items only.",
     "input_schema": {
         "type": "object",
         "properties": {
             "include": {
                 "type": "array",
+                "maxItems": 12,
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string"},
-                        "instrument_type": {"type": "string"},
-                        "sector": {"type": "string"},
+                        "name": {"type": "string", "maxLength": 150},
+                        "instrument_type": {"type": "string", "maxLength": 50},
+                        "sector": {"type": "string", "maxLength": 50},
                         "url": {"type": "string"},
                         "last_reform_date": {"type": "string"},
-                        "last_reform_label": {"type": "string"},
-                        "ihr_articles": {"type": "string"},
-                        "classification_reason": {"type": "string"}
+                        "last_reform_label": {"type": "string", "maxLength": 50},
+                        "ihr_articles": {"type": "string", "maxLength": 100},
+                        "classification_reason": {"type": "string", "maxLength": 200}
                     },
                     "required": ["name"]
                 }
             },
             "review": {
                 "type": "array",
+                "maxItems": 8,
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string"},
-                        "classification_reason": {"type": "string"}
+                        "name": {"type": "string", "maxLength": 150},
+                        "classification_reason": {"type": "string", "maxLength": 200}
                     }
                 }
             },
             "discard": {
                 "type": "array",
+                "maxItems": 8,
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string"},
-                        "classification_reason": {"type": "string"}
+                        "name": {"type": "string", "maxLength": 150},
+                        "classification_reason": {"type": "string", "maxLength": 200}
                     }
                 }
             },
             "lagunas": {
                 "type": "array",
+                "maxItems": 5,
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string"},
-                        "classification_reason": {"type": "string"}
+                        "name": {"type": "string", "maxLength": 150},
+                        "classification_reason": {"type": "string", "maxLength": 200}
                     }
                 }
             }
@@ -100,15 +104,15 @@ CORPUS_TOOL = {
 
 ANALYSIS_TOOL = {
     "name": "submit_analysis",
-    "description": "Submit detailed analysis or scores for an IHR block.",
+    "description": "Submit block analysis results. Keep findings concise.",
     "input_schema": {
         "type": "object",
         "properties": {
             "block": {"type": "string"},
             "articles": {"type": "object"},
-            "intersectorality_note": {"type": "string"},
-            "articulation_gaps": {"type": "array", "items": {"type": "string"}},
-            "2024_amendment_gaps": {"type": "array", "items": {"type": "string"}},
+            "intersectorality_note": {"type": "string", "maxLength": 300},
+            "articulation_gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}},
+            "2024_amendment_gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}},
             "c1_contribution": {"type": "object"},
             # For SCORES block specifically
             "c1_1": {"type": "object"},
@@ -118,7 +122,7 @@ ANALYSIS_TOOL = {
             "c1_5": {"type": "object"},
             "total_weighted": {"type": "number"},
             "reform_proposals": {"type": "array", "items": {"type": "object"}},
-            "main_finding": {"type": "string"}
+            "main_finding": {"type": "string", "maxLength": 400}
         },
         "required": ["block"]
     }
@@ -325,7 +329,12 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
                     f"Model failed to provide structured corpus data. {msg_info}. Raw output: {full_raw_text[:500]}"
                 )
 
-            parsed = json.loads(tool_args_str)
+            try:
+                parsed = json.loads(tool_args_str)
+            except json.JSONDecodeError as e:
+                print(f"[discover_corpus] JSON decode failed at pos {e.pos}: {e}")
+                print(f"[discover_corpus] JSON snippet: {tool_args_str[max(0, e.pos-200):e.pos+200]}")
+                raise
 
             db.query(CorpusItem).filter(CorpusItem.analysis_id == aid).delete()
 
@@ -488,7 +497,12 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
                     f"Model failed to provide structured analysis for block {block}. {msg_info}. Raw output: {full_raw_text[:500]}"
                 )
 
-            parsed = json.loads(tool_args_str)
+            try:
+                parsed = json.loads(tool_args_str)
+            except json.JSONDecodeError as e:
+                print(f"[analyze_block:{block}] JSON decode failed at pos {e.pos}: {e}")
+                print(f"[analyze_block:{block}] JSON snippet: {tool_args_str[max(0, e.pos-200):e.pos+200]}")
+                raise
 
             results = dict(a.results or {})
             results[block] = parsed
