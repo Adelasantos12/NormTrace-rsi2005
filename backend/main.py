@@ -40,6 +40,91 @@ def seed_mexico():
         db.close()
 
 
+CORPUS_TOOL = {
+    "name": "submit_corpus",
+    "description": "Submit the discovered normative corpus for a country.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "include": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "instrument_type": {"type": "string"},
+                        "sector": {"type": "string"},
+                        "url": {"type": "string"},
+                        "last_reform_date": {"type": "string"},
+                        "last_reform_label": {"type": "string"},
+                        "ihr_articles": {"type": "string"},
+                        "classification_reason": {"type": "string"}
+                    },
+                    "required": ["name"]
+                }
+            },
+            "review": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "classification_reason": {"type": "string"}
+                    }
+                }
+            },
+            "discard": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "classification_reason": {"type": "string"}
+                    }
+                }
+            },
+            "lagunas": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "classification_reason": {"type": "string"}
+                    }
+                }
+            }
+        },
+        "required": ["include", "review", "discard", "lagunas"]
+    }
+}
+
+ANALYSIS_TOOL = {
+    "name": "submit_analysis",
+    "description": "Submit detailed analysis or scores for an IHR block.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "block": {"type": "string"},
+            "articles": {"type": "object"},
+            "intersectorality_note": {"type": "string"},
+            "articulation_gaps": {"type": "array", "items": {"type": "string"}},
+            "2024_amendment_gaps": {"type": "array", "items": {"type": "string"}},
+            "c1_contribution": {"type": "object"},
+            # For SCORES block specifically
+            "c1_1": {"type": "object"},
+            "c1_2": {"type": "object"},
+            "c1_3": {"type": "object"},
+            "c1_4": {"type": "object"},
+            "c1_5": {"type": "object"},
+            "total_weighted": {"type": "number"},
+            "reform_proposals": {"type": "array", "items": {"type": "object"}},
+            "main_finding": {"type": "string"}
+        },
+        "required": ["block"]
+    }
+}
+
+
 def extract_json(text: str) -> dict:
     """Robustly extract and parse JSON from Claude's response."""
     # Remove potential markdown code blocks
@@ -223,19 +308,24 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
     claude = get_claude_client()
 
     async def stream():
-        full_text = ""
         try:
+            tool_args_str = ""
             with claude.messages.stream(
                 model=MODEL,
                 max_tokens=4096,
                 system=get_system_prompt(a.language),
                 messages=[{"role": "user", "content": discovery_prompt}],
+                tools=[CORPUS_TOOL],
+                tool_choice={"type": "tool", "name": "submit_corpus"}
             ) as s:
-                for text in s.text_stream:
-                    full_text += text
-                    yield f"data: {json.dumps({'chunk': text})}\n\n"
+                for event in s:
+                    if event.type == "text_delta":
+                        yield f"data: {json.dumps({'chunk': event.text})}\n\n"
+                    elif event.type == "input_json_delta":
+                        tool_args_str += event.partial_json
+                        yield f"data: {json.dumps({'chunk': event.partial_json})}\n\n"
 
-            parsed = extract_json(full_text)
+            parsed = json.loads(tool_args_str)
 
             db.query(CorpusItem).filter(CorpusItem.analysis_id == aid).delete()
 
@@ -349,19 +439,24 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
     claude = get_claude_client()
 
     async def stream():
-        full_text = ""
         try:
+            tool_args_str = ""
             with claude.messages.stream(
                 model=MODEL,
                 max_tokens=4096,
                 system=get_system_prompt(a.language),
                 messages=[{"role": "user", "content": prompt}],
+                tools=[ANALYSIS_TOOL],
+                tool_choice={"type": "tool", "name": "submit_analysis"}
             ) as s:
-                for text in s.text_stream:
-                    full_text += text
-                    yield f"data: {json.dumps({'chunk': text})}\n\n"
+                for event in s:
+                    if event.type == "text_delta":
+                        yield f"data: {json.dumps({'chunk': event.text})}\n\n"
+                    elif event.type == "input_json_delta":
+                        tool_args_str += event.partial_json
+                        yield f"data: {json.dumps({'chunk': event.partial_json})}\n\n"
 
-            parsed = extract_json(full_text)
+            parsed = json.loads(tool_args_str)
 
             results = dict(a.results or {})
             results[block] = parsed
