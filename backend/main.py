@@ -39,6 +39,39 @@ def seed_mexico():
     finally:
         db.close()
 
+
+def extract_json(text: str) -> dict:
+    """Robustly extract and parse JSON from Claude's response."""
+    # Remove potential markdown code blocks
+    text = text.strip()
+    if text.startswith("```json"):
+        text = text[len("```json"):]
+    if text.startswith("```"):
+        text = text[len("```"):]
+    if text.endswith("```"):
+        text = text[:-3]
+    text = text.strip()
+
+    # Find the first { and last }
+    start = text.find("{")
+    end = text.rfind("}") + 1
+    if start == -1 or end == 0:
+        raise ValueError("No JSON object found in response")
+
+    json_str = text[start:end]
+
+    # Attempt standard parse
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        # Claude sometimes leaves trailing commas or uses single quotes
+        # A very basic cleanup for common LLM artifacts
+        import re
+        # Remove trailing commas in objects/arrays
+        json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
+        return json.loads(json_str)
+
+
 app = FastAPI(title="IHR Normative Observatory", version="1.0.0")
 
 frontend_origins = [
@@ -202,9 +235,7 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
                     full_text += text
                     yield f"data: {json.dumps({'chunk': text})}\n\n"
 
-            start = full_text.find("{")
-            end = full_text.rfind("}") + 1
-            parsed = json.loads(full_text[start:end])
+            parsed = extract_json(full_text)
 
             db.query(CorpusItem).filter(CorpusItem.analysis_id == aid).delete()
 
@@ -330,9 +361,7 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
                     full_text += text
                     yield f"data: {json.dumps({'chunk': text})}\n\n"
 
-            start = full_text.find("{")
-            end = full_text.rfind("}") + 1
-            parsed = json.loads(full_text[start:end])
+            parsed = extract_json(full_text)
 
             results = dict(a.results or {})
             results[block] = parsed

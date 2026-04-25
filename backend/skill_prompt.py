@@ -99,7 +99,7 @@ Your task:
    - Official source URL
    - Which IHR articles it potentially covers
 
-4. Return a structured JSON response with this exact format:
+4. Return ONLY a structured JSON response with this exact format (no preamble, no markdown blocks):
 {{
   "include": [
     {{
@@ -154,7 +154,7 @@ For each IHR obligation in Block A (Arts. 4, 4bis-2024, 6, 7, 10):
 4. Identify articulation gaps: pieces exist but no legal coordinator
 5. Note 2024 amendment gaps specifically
 
-Return structured JSON:
+Return ONLY structured JSON (no preamble, no markdown blocks):
 {{
   "block": "A",
   "articles": {{
@@ -285,7 +285,7 @@ Calculate:
 
 Apply weak link rule: if any indicator = 1, overall score ≤ 2.5
 
-Return JSON:
+Return ONLY JSON (no preamble, no markdown blocks):
 {{
   "c1_1": {{"score": 1-5, "rationale": "..."}},
   "c1_2": {{"score": 1-5, "rationale": "..."}},
