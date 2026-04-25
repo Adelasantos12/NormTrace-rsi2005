@@ -109,7 +109,7 @@ In the backend service settings → Variables:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-your-key-here
-ANTHROPIC_MODEL=claude-3-5-haiku-20241022
+ANTHROPIC_MODEL=claude-haiku-4-5
 FRONTEND_URL=https://your-frontend.vercel.app
 ```
 
