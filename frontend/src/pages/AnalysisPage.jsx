@@ -34,11 +34,12 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysis?.status]);
 
-  // Sequential auto-analysis
+  // Sequential auto-analysis - strictly triggers once when conditions change
   useEffect(() => {
     if (analysis && analysis.status === 'analyzing' && !streaming) {
       const nextBlock = BLOCKS.find(b => !analysis.results?.[b]);
       if (nextBlock) {
+        // Prevent re-triggering the SAME block if it's already being streamed or just finished
         startBlockAnalysis(nextBlock);
         setActiveTab(nextBlock);
       }
@@ -49,17 +50,23 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
 
   useEffect(() => {
     getCorpus(analysis.id).then(setCorpus).catch((err) => setUiError(err.message || 'Failed to load corpus'))
+
+    // Only poll if NOT streaming to avoid race conditions/state resets
     const interval = setInterval(async () => {
+      if (streaming) return;
       try {
         const fresh = await getAnalysis(analysis.id)
-        setAnalysis(fresh)
+        // Only update if something actually changed to prevent loop triggers
+        if (JSON.stringify(fresh.results) !== JSON.stringify(analysis.results) || fresh.status !== analysis.status) {
+          setAnalysis(fresh)
+        }
         if (fresh.status === 'complete') clearInterval(interval)
       } catch (err) {
         setUiError(err.message || 'Failed to refresh analysis')
       }
     }, 5000)
     return () => clearInterval(interval)
-  }, [analysis.id])
+  }, [analysis.id, streaming, analysis.status, analysis.results])
 
   // Corpus discovery
   function startDiscovery() {
@@ -71,13 +78,13 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
       (chunk) => setStreamText(p => ({ ...p, DISCOVERY: (p.DISCOVERY || '') + chunk })),
       async () => {
         try {
-          setStreaming(null)
           const [fresh, freshCorpus] = await Promise.all([
             getAnalysis(analysis.id),
             getCorpus(analysis.id),
           ])
           setAnalysis(fresh)
           setCorpus(freshCorpus)
+          setStreaming(null)
         } catch (err) {
           setUiError(err.message || 'Discovery finished with errors')
         }
@@ -103,9 +110,9 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
       (chunk) => setStreamText(p => ({ ...p, [block]: (p[block] || '') + chunk })),
       async () => {
         try {
-          setStreaming(null)
           const fresh = await getAnalysis(analysis.id)
           setAnalysis(fresh)
+          setStreaming(null)
         } catch (err) {
           setUiError(err.message || `Block ${block} finished with errors`)
         }
