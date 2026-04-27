@@ -6,6 +6,7 @@ from datetime import datetime
 import anthropic
 import json
 import os
+import re
 import traceback
 
 from database import get_db, engine
@@ -39,6 +40,122 @@ def seed_mexico():
     finally:
         db.close()
 
+
+CORPUS_TOOL = {
+    "name": "submit_corpus",
+    "description": "Submit the discovered normative corpus. Limit to most relevant items only.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "include": {
+                "type": "array",
+                "maxItems": 12,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "maxLength": 150},
+                        "instrument_type": {"type": "string", "maxLength": 50},
+                        "sector": {"type": "string", "maxLength": 50},
+                        "url": {"type": "string"},
+                        "last_reform_date": {"type": "string"},
+                        "last_reform_label": {"type": "string", "maxLength": 50},
+                        "ihr_articles": {"type": "string", "maxLength": 100},
+                        "classification_reason": {"type": "string", "maxLength": 200}
+                    },
+                    "required": ["name"]
+                }
+            },
+            "review": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "maxLength": 150},
+                        "classification_reason": {"type": "string", "maxLength": 200}
+                    }
+                }
+            },
+            "discard": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "maxLength": 150},
+                        "classification_reason": {"type": "string", "maxLength": 200}
+                    }
+                }
+            },
+            "lagunas": {
+                "type": "array",
+                "maxItems": 5,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "maxLength": 150},
+                        "classification_reason": {"type": "string", "maxLength": 200}
+                    }
+                }
+            }
+        },
+        "required": ["include", "review", "discard", "lagunas"]
+    }
+}
+
+ANALYSIS_TOOL = {
+    "name": "submit_analysis",
+    "description": "Submit block analysis results. Keep findings extremely concise (max 200 chars per text field).",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "block": {"type": "string"},
+            "articles": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "obligation": {"type": "string", "maxLength": 200},
+                        "coverage_found": {"type": "string"},
+                        "situation_type": {"type": "string"},
+                        "attention_level": {"type": "string"},
+                        "finding": {"type": "string", "maxLength": 250},
+                        "instruments_searched": {"type": "array", "items": {"type": "string", "maxLength": 100}}
+                    }
+                }
+            },
+            "intersectorality_note": {"type": "string", "maxLength": 250},
+            "articulation_gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}},
+            "2024_amendment_gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}},
+            "c1_contribution": {"type": "object"},
+            # For SCORES block specifically
+            "c1_1": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_2": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_3": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_4": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_5": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "total_weighted": {"type": "number"},
+            "reform_proposals": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ihr_article": {"type": "string", "maxLength": 50},
+                        "current_gap": {"type": "string", "maxLength": 200},
+                        "instrument_recommended": {"type": "string", "maxLength": 100},
+                        "instrument_reason": {"type": "string", "maxLength": 200},
+                        "proposed_text": {"type": "string", "maxLength": 300},
+                        "lateral_effects": {"type": "string", "maxLength": 200}
+                    }
+                }
+            },
+            "main_finding": {"type": "string", "maxLength": 300}
+        },
+        "required": ["block"]
+    }
+}
+
+
 app = FastAPI(title="IHR Normative Observatory", version="1.0.0")
 
 frontend_origins = [
@@ -49,7 +166,14 @@ frontend_origins = [
     if origin.strip()
 ]
 if not frontend_origins:
-    frontend_origins = ["http://localhost:5173"]
+    frontend_origins = [
+        "https://normtrace.up.railway.app",
+        "https://normtrace-rsi2005-production.up.railway.app",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,29 +185,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 
-
-def get_claude_client():
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=500,
-            detail="ANTHROPIC_API_KEY is not configured on the backend."
-        )
-    return anthropic.Anthropic(api_key=api_key)
-
-
-@app.on_event("startup")
-def bootstrap_db():
-    """Initialize DB tables/seed without crashing container healthchecks."""
+def extract_json(text: str):
+    """Fallback to extract JSON from text if tool use is wrapped in text."""
     try:
-        Base.metadata.create_all(bind=engine)
-        seed_mexico()
-    except Exception as e:
-        # Keep app process alive so /health can respond; API routes will fail until DB is reachable.
-        print(f"[startup] DB bootstrap skipped: {e}")
-MODEL = "claude-3-5-sonnet-20241022"
+        # Look for JSON between triple backticks
+        match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
+        if match:
+            return json.loads(match.group(1))
+        # Look for anything between { and }
+        match = re.search(r"(\{.*\})", text, re.DOTALL)
+        if match:
+            return json.loads(match.group(1))
+    except:
+        pass
+    return None
 
 
 def get_claude_client():
@@ -207,21 +324,61 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
     claude = get_claude_client()
 
     async def stream():
-        full_text = ""
         try:
+            tool_args_str = ""
+            full_raw_text = ""
             with claude.messages.stream(
                 model=MODEL,
                 max_tokens=4096,
                 system=get_system_prompt(a.language),
                 messages=[{"role": "user", "content": discovery_prompt}],
+                tools=[CORPUS_TOOL],
+                tool_choice={"type": "tool", "name": "submit_corpus"}
             ) as s:
-                for text in s.text_stream:
-                    full_text += text
-                    yield f"data: {json.dumps({'chunk': text})}\n\n"
+                for event in s:
+                    if event.type == "content_block_delta":
+                        if event.delta.type == "text_delta":
+                            full_raw_text += event.delta.text
+                            yield f"data: {json.dumps({'chunk': event.delta.text})}\n\n"
+                        elif event.delta.type == "input_json_delta":
+                            tool_args_str += event.delta.partial_json
+                            yield f"data: {json.dumps({'chunk': event.delta.partial_json})}\n\n"
 
-            start = full_text.find("{")
-            end = full_text.rfind("}") + 1
-            parsed = json.loads(full_text[start:end])
+            # Final attempt to get args from final message if stream was interrupted but message exists
+            final_msg = None
+            try:
+                final_msg = s.get_final_message()
+            except:
+                pass
+
+            if not tool_args_str.strip() and final_msg:
+                for content_block in final_msg.content:
+                    if content_block.type == "tool_use" and content_block.name == "submit_corpus":
+                        tool_args_str = json.dumps(content_block.input)
+                    if content_block.type == "text":
+                        full_raw_text += content_block.text
+
+            if not tool_args_str.strip():
+                # If tool use failed, maybe it's raw JSON in text? (fallback)
+                try:
+                    parsed = extract_json(full_raw_text)
+                    tool_args_str = json.dumps(parsed)
+                except:
+                    pass
+
+            if not tool_args_str.strip():
+                msg_info = f"Content types: {[b.type for b in final_msg.content]}" if final_msg else "No final message"
+                print(f"[discover_corpus] FAILED. {msg_info}. Raw text: {full_raw_text}")
+                raise ValueError(
+                    f"Model failed to provide structured corpus data. {msg_info}. Raw output: {full_raw_text[:500]}"
+                )
+
+            try:
+                parsed = json.loads(tool_args_str)
+            except json.JSONDecodeError as e:
+                print(f"[discover_corpus] JSON decode failed at pos {e.pos}: {e}")
+                print(f"[discover_corpus] JSON snippet: {tool_args_str[max(0, e.pos-200):e.pos+200]}")
+                raise
 
             db.query(CorpusItem).filter(CorpusItem.analysis_id == aid).delete()
 
@@ -335,21 +492,61 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
     claude = get_claude_client()
 
     async def stream():
-        full_text = ""
         try:
+            tool_args_str = ""
+            full_raw_text = ""
             with claude.messages.stream(
                 model=MODEL,
                 max_tokens=4096,
                 system=get_system_prompt(a.language),
                 messages=[{"role": "user", "content": prompt}],
+                tools=[ANALYSIS_TOOL],
+                tool_choice={"type": "tool", "name": "submit_analysis"}
             ) as s:
-                for text in s.text_stream:
-                    full_text += text
-                    yield f"data: {json.dumps({'chunk': text})}\n\n"
+                for event in s:
+                    if event.type == "content_block_delta":
+                        if event.delta.type == "text_delta":
+                            full_raw_text += event.delta.text
+                            yield f"data: {json.dumps({'chunk': event.delta.text})}\n\n"
+                        elif event.delta.type == "input_json_delta":
+                            tool_args_str += event.delta.partial_json
+                            yield f"data: {json.dumps({'chunk': event.delta.partial_json})}\n\n"
 
-            start = full_text.find("{")
-            end = full_text.rfind("}") + 1
-            parsed = json.loads(full_text[start:end])
+            # Final attempt to get args from final message
+            final_msg = None
+            try:
+                final_msg = s.get_final_message()
+            except:
+                pass
+
+            if not tool_args_str.strip() and final_msg:
+                for content_block in final_msg.content:
+                    if content_block.type == "tool_use" and content_block.name == "submit_analysis":
+                        tool_args_str = json.dumps(content_block.input)
+                    if content_block.type == "text":
+                        full_raw_text += content_block.text
+
+            if not tool_args_str.strip():
+                # Fallback to extract from text
+                try:
+                    parsed = extract_json(full_raw_text)
+                    tool_args_str = json.dumps(parsed)
+                except:
+                    pass
+
+            if not tool_args_str.strip():
+                msg_info = f"Content types: {[b.type for b in final_msg.content]}" if final_msg else "No final message"
+                print(f"[analyze_block:{block}] FAILED. {msg_info}. Raw text: {full_raw_text}")
+                raise ValueError(
+                    f"Model failed to provide structured analysis for block {block}. {msg_info}. Raw output: {full_raw_text[:500]}"
+                )
+
+            try:
+                parsed = json.loads(tool_args_str)
+            except json.JSONDecodeError as e:
+                print(f"[analyze_block:{block}] JSON decode failed at pos {e.pos}: {e}")
+                print(f"[analyze_block:{block}] JSON snippet: {tool_args_str[max(0, e.pos-200):e.pos+200]}")
+                raise
 
             results = dict(a.results or {})
             results[block] = parsed

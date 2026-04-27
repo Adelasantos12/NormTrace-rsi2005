@@ -34,20 +34,39 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysis?.status]);
 
+  // Sequential auto-analysis - strictly triggers once when conditions change
+  useEffect(() => {
+    if (analysis && analysis.status === 'analyzing' && !streaming) {
+      const nextBlock = BLOCKS.find(b => !analysis.results?.[b]);
+      if (nextBlock) {
+        // Prevent re-triggering the SAME block if it's already being streamed or just finished
+        startBlockAnalysis(nextBlock);
+        setActiveTab(nextBlock);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status, analysis?.results, streaming]);
+
 
   useEffect(() => {
     getCorpus(analysis.id).then(setCorpus).catch((err) => setUiError(err.message || 'Failed to load corpus'))
+
+    // Only poll if NOT streaming to avoid race conditions/state resets
     const interval = setInterval(async () => {
+      if (streaming) return;
       try {
         const fresh = await getAnalysis(analysis.id)
-        setAnalysis(fresh)
+        // Only update if something actually changed to prevent loop triggers
+        if (JSON.stringify(fresh.results) !== JSON.stringify(analysis.results) || fresh.status !== analysis.status) {
+          setAnalysis(fresh)
+        }
         if (fresh.status === 'complete') clearInterval(interval)
       } catch (err) {
         setUiError(err.message || 'Failed to refresh analysis')
       }
     }, 5000)
     return () => clearInterval(interval)
-  }, [analysis.id])
+  }, [analysis.id, streaming, analysis.status, analysis.results])
 
   // Corpus discovery
   function startDiscovery() {
@@ -59,13 +78,13 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
       (chunk) => setStreamText(p => ({ ...p, DISCOVERY: (p.DISCOVERY || '') + chunk })),
       async () => {
         try {
-          setStreaming(null)
           const [fresh, freshCorpus] = await Promise.all([
             getAnalysis(analysis.id),
             getCorpus(analysis.id),
           ])
           setAnalysis(fresh)
           setCorpus(freshCorpus)
+          setStreaming(null)
         } catch (err) {
           setUiError(err.message || 'Discovery finished with errors')
         }
@@ -91,9 +110,9 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
       (chunk) => setStreamText(p => ({ ...p, [block]: (p[block] || '') + chunk })),
       async () => {
         try {
-          setStreaming(null)
           const fresh = await getAnalysis(analysis.id)
           setAnalysis(fresh)
+          setStreaming(null)
         } catch (err) {
           setUiError(err.message || `Block ${block} finished with errors`)
         }
@@ -126,14 +145,20 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
     }
   }
 
+  const [isConfirming, setIsConfirming] = useState(false)
+
   async function handleConfirmCorpus() {
     try {
+      setIsConfirming(true)
+      setUiError(null)
       await confirmCorpus(analysis.id)
       const fresh = await getAnalysis(analysis.id)
       setAnalysis(fresh)
       setActiveTab('A')
     } catch (err) {
       setUiError(err.message || 'Failed to confirm corpus')
+    } finally {
+      setIsConfirming(false)
     }
   }
 
@@ -166,6 +191,8 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   const includedCorpus = corpus.filter(i => i.classification === 'include')
   const reviewCorpus = corpus.filter(i => i.classification === 'review')
   const discardedCorpus = corpus.filter(i => i.classification === 'discard')
+
+  const isAutoAnalyzing = analysis?.status === 'analyzing'
 
   return (
     <div>
@@ -233,8 +260,18 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
 
       {/* Tabs */}
       {uiError && (
-        <div style={{ marginBottom: '1rem', color: '#A32D2D', fontSize: '12px' }}>
+        <div style={{ marginBottom: '1rem', color: '#A32D2D', fontSize: '12px', padding: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px' }}>
           {uiError}
+        </div>
+      )}
+
+      {isAutoAnalyzing && (
+        <div style={{ marginBottom: '1.5rem', padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '16px', height: '16px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: '500' }}>
+            Automated analysis in progress... Stage: {streaming || activeTab}
+          </span>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
 
@@ -281,9 +318,10 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
               <CorpusSection
                 title={`${t('corpus.include')} (${includedCorpus.length})`}
                 items={includedCorpus}
-                color="#3B6D11"
+                color="#166534"
                 onClassify={handleClassify}
                 t={t}
+                isIncluded={true}
               />
               <CorpusSection
                 title={`${t('corpus.review')} (${reviewCorpus.length})`}
@@ -324,10 +362,32 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
                 </form>
               )}
 
-              {analysis.status === 'corpus_ready' && (
-                <button onClick={handleConfirmCorpus} style={btn}>
-                  ✓ {t('corpus.confirm')}
-                </button>
+              {(analysis.status === 'corpus_ready' || (analysis.status === 'corpus_pending' && includedCorpus.length > 0)) && (
+                <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px' }}>
+                  <p style={{ fontSize: '13px', color: '#0369a1', marginBottom: '1rem', fontWeight: '500' }}>
+                    Ready to proceed? Confirm the selected documents to enable detailed analysis.
+                  </p>
+              <button
+                onClick={handleConfirmCorpus}
+                disabled={isConfirming}
+                style={{
+                  ...btn,
+                  background: '#0284c7',
+                  fontSize: '14px',
+                  padding: '12px 24px',
+                  opacity: isConfirming ? 0.7 : 1,
+                  cursor: isConfirming ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                {isConfirming && (
+                  <div style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                )}
+                {isConfirming ? 'Confirming...' : `✓ ${t('corpus.confirm')}`}
+                  </button>
+                </div>
               )}
             </>
           )}
@@ -374,14 +434,14 @@ function Tab({ label, id, active, onClick, done }) {
   )
 }
 
-function CorpusSection({ title, items, color, onClassify, t }) {
+function CorpusSection({ title, items, color, onClassify, t, isIncluded }) {
   if (items.length === 0) return null
   return (
-    <div style={{ marginBottom: '1rem' }}>
-      <h3 style={{ fontSize: '11px', fontWeight: '600', color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
+    <div style={{ marginBottom: '1.5rem', padding: isIncluded ? '12px' : '0', background: isIncluded ? '#f0fdf4' : 'none', border: isIncluded ? '1px solid #dcfce7' : 'none', borderRadius: '8px' }}>
+      <h3 style={{ fontSize: '11px', fontWeight: '600', color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
         {title}
       </h3>
-      <div style={{ display: 'grid', gap: '4px' }}>
+      <div style={{ display: 'grid', gap: '6px' }}>
         {items.map(item => (
           <div key={item.id} style={{
             display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', alignItems: 'start',
