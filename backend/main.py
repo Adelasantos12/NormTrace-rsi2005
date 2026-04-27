@@ -222,6 +222,54 @@ def extract_json(text: str):
     return None
 
 
+def _extract_balanced_json_fragment(text: str):
+    """Extract first balanced JSON object/array fragment from possibly truncated text."""
+    if not text:
+        return None
+
+    opener_to_closer = {"{": "}", "[": "]"}
+    start = -1
+    opening = ""
+    for idx, ch in enumerate(text):
+        if ch in opener_to_closer:
+            start = idx
+            opening = ch
+            break
+
+    if start == -1:
+        return None
+
+    closer = opener_to_closer[opening]
+    depth = 0
+    in_string = False
+    escaped = False
+
+    for idx in range(start, len(text)):
+        ch = text[idx]
+
+        if in_string:
+            if escaped:
+                escaped = False
+                continue
+            if ch == "\\":
+                escaped = True
+                continue
+            if ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch == opening:
+            depth += 1
+        elif ch == closer:
+            depth -= 1
+            if depth == 0:
+                return text[start:idx + 1]
+
+    return None
+
+
 def get_claude_client():
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -370,9 +418,10 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
             except:
                 pass
 
-            if not tool_args_str.strip() and final_msg:
+            if final_msg:
                 for content_block in final_msg.content:
                     if content_block.type == "tool_use" and content_block.name == "submit_corpus":
+                        # Prefer SDK-parsed structured input over streamed partial_json chunks
                         tool_args_str = json.dumps(content_block.input)
                     if content_block.type == "text":
                         full_raw_text += content_block.text
@@ -395,8 +444,19 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
             try:
                 parsed = json.loads(tool_args_str)
             except json.JSONDecodeError:
+                # Retry with first balanced fragment if the stream appended extra/truncated tokens
+                balanced_fragment = _extract_balanced_json_fragment(tool_args_str)
+                if balanced_fragment:
+                    try:
+                        parsed = json.loads(balanced_fragment)
+                    except json.JSONDecodeError:
+                        parsed = None
+                else:
+                    parsed = None
+
                 # Retry with extract_json fallback for Extra data / malformed concatenation
-                parsed = extract_json(tool_args_str)
+                if not parsed:
+                    parsed = extract_json(tool_args_str)
                 if not parsed:
                     # Final attempt: maybe the data is in full_raw_text?
                     parsed = extract_json(full_raw_text)
