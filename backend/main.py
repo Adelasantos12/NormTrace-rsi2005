@@ -119,37 +119,38 @@ ANALYSIS_TOOL = {
                         "coverage_found": {"type": "string"},
                         "situation_type": {"type": "string"},
                         "attention_level": {"type": "string"},
-                        "finding": {"type": "string", "maxLength": 250},
+                        "finding": {"type": "string", "maxLength": 180},
                         "instruments_searched": {"type": "array", "items": {"type": "string", "maxLength": 100}}
                     }
                 }
             },
-            "intersectorality_note": {"type": "string", "maxLength": 250},
-            "articulation_gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}},
-            "2024_amendment_gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}},
+            "intersectorality_note": {"type": "string", "maxLength": 180},
+            "articulation_gaps": {"type": "array", "maxItems": 4, "items": {"type": "string", "maxLength": 140}},
+            "2024_amendment_gaps": {"type": "array", "maxItems": 4, "items": {"type": "string", "maxLength": 140}},
             "c1_contribution": {"type": "object"},
             # For SCORES block specifically
-            "c1_1": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
-            "c1_2": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
-            "c1_3": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
-            "c1_4": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
-            "c1_5": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_1": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 120}}},
+            "c1_2": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 120}}},
+            "c1_3": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 120}}},
+            "c1_4": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 120}}},
+            "c1_5": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 120}}},
             "total_weighted": {"type": "number"},
             "reform_proposals": {
                 "type": "array",
+                "maxItems": 3,
                 "items": {
                     "type": "object",
                     "properties": {
                         "ihr_article": {"type": "string", "maxLength": 50},
-                        "current_gap": {"type": "string", "maxLength": 200},
+                        "current_gap": {"type": "string", "maxLength": 140},
                         "instrument_recommended": {"type": "string", "maxLength": 100},
-                        "instrument_reason": {"type": "string", "maxLength": 200},
-                        "proposed_text": {"type": "string", "maxLength": 300},
-                        "lateral_effects": {"type": "string", "maxLength": 200}
+                        "instrument_reason": {"type": "string", "maxLength": 140},
+                        "proposed_text": {"type": "string", "maxLength": 180},
+                        "lateral_effects": {"type": "string", "maxLength": 140}
                     }
                 }
             },
-            "main_finding": {"type": "string", "maxLength": 300}
+            "main_finding": {"type": "string", "maxLength": 180}
         },
         "required": ["block"]
     }
@@ -573,6 +574,11 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
         corpus_json=corpus_json,
         blocks_summary=json.dumps(a.results or {}, indent=2),
     )
+    block_max_tokens = {
+        "F": 2200,
+        "G": 1800,
+        "SCORES": 1800,
+    }.get(block, 3200)
 
     claude = get_claude_client()
 
@@ -582,7 +588,7 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
             full_raw_text = ""
             with claude.messages.stream(
                 model=MODEL,
-                max_tokens=4096,
+                max_tokens=block_max_tokens,
                 system=get_system_prompt(a.language),
                 messages=[{"role": "user", "content": prompt}],
                 tools=[ANALYSIS_TOOL],
@@ -604,9 +610,10 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
             except:
                 pass
 
-            if not tool_args_str.strip() and final_msg:
+            if final_msg:
                 for content_block in final_msg.content:
                     if content_block.type == "tool_use" and content_block.name == "submit_analysis":
+                        # Prefer SDK-parsed structured input over streamed partial_json chunks
                         tool_args_str = json.dumps(content_block.input)
                     if content_block.type == "text":
                         full_raw_text += content_block.text
@@ -629,8 +636,19 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
             try:
                 parsed = json.loads(tool_args_str)
             except json.JSONDecodeError:
+                # Retry with first balanced fragment if stream had extra/truncated tail
+                balanced_fragment = _extract_balanced_json_fragment(tool_args_str)
+                if balanced_fragment:
+                    try:
+                        parsed = json.loads(balanced_fragment)
+                    except json.JSONDecodeError:
+                        parsed = None
+                else:
+                    parsed = None
+
                 # Retry with extract_json fallback
-                parsed = extract_json(tool_args_str)
+                if not parsed:
+                    parsed = extract_json(tool_args_str)
                 if not parsed:
                     parsed = extract_json(full_raw_text)
 
@@ -667,6 +685,16 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
             yield f"data: {json.dumps({'block': block, 'done': True})}\n\n"
 
         except Exception as e:
+            results = dict(a.results or {})
+            results[block] = {
+                "status": "failed",
+                "error_type": type(e).__name__,
+                "error_message": str(e)[:500],
+                "failed_at": datetime.utcnow().isoformat() + "Z",
+            }
+            a.results = results
+            a.status = "error"
+            db.commit()
             print(f"[analyze_block:{block}] model={MODEL} error={e}")
             traceback.print_exc()
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
