@@ -154,7 +154,8 @@ For each IHR obligation in Block A (Arts. 4, 4bis-2024, 6, 7, 10):
 4. Identify articulation gaps: pieces exist but no legal coordinator
 5. Note 2024 amendment gaps specifically
 
-Return the analysis results by calling the provided tool. Be extremely concise in findings and text fields.
+Return the analysis results by calling the provided tool.
+CRITICAL: Be extremely concise. Limit each text field to 1-2 short sentences (max 200 characters).
 Avoid long quotes, markdown formatting inside strings, or redundant information.
 Use this exact format:
 {{
@@ -287,8 +288,9 @@ Calculate:
 
 Apply weak link rule: if any indicator = 1, overall score ≤ 2.5
 
-Return the final scores and proposals by calling the provided tool. Keep rationales very short.
-Ensure proposals are succinct. Avoid redundant text.
+Return the final scores and proposals by calling the provided tool.
+CRITICAL: Keep rationales and proposals extremely short. Max 200 characters per field.
+Avoid redundant text.
 Use this exact format:
 {{
   "c1_1": {{"score": 1-5, "rationale": "..."}},

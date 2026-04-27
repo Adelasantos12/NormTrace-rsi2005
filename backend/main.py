@@ -105,25 +105,51 @@ CORPUS_TOOL = {
 
 ANALYSIS_TOOL = {
     "name": "submit_analysis",
-    "description": "Submit block analysis results. Keep findings concise.",
+    "description": "Submit block analysis results. Keep findings extremely concise (max 200 chars per text field).",
     "input_schema": {
         "type": "object",
         "properties": {
             "block": {"type": "string"},
-            "articles": {"type": "object"},
-            "intersectorality_note": {"type": "string", "maxLength": 300},
+            "articles": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "obligation": {"type": "string", "maxLength": 200},
+                        "coverage_found": {"type": "string"},
+                        "situation_type": {"type": "string"},
+                        "attention_level": {"type": "string"},
+                        "finding": {"type": "string", "maxLength": 250},
+                        "instruments_searched": {"type": "array", "items": {"type": "string", "maxLength": 100}}
+                    }
+                }
+            },
+            "intersectorality_note": {"type": "string", "maxLength": 250},
             "articulation_gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}},
             "2024_amendment_gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}},
             "c1_contribution": {"type": "object"},
             # For SCORES block specifically
-            "c1_1": {"type": "object"},
-            "c1_2": {"type": "object"},
-            "c1_3": {"type": "object"},
-            "c1_4": {"type": "object"},
-            "c1_5": {"type": "object"},
+            "c1_1": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_2": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_3": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_4": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
+            "c1_5": {"type": "object", "properties": {"score": {"type": "integer"}, "rationale": {"type": "string", "maxLength": 200}}},
             "total_weighted": {"type": "number"},
-            "reform_proposals": {"type": "array", "items": {"type": "object"}},
-            "main_finding": {"type": "string", "maxLength": 400}
+            "reform_proposals": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ihr_article": {"type": "string", "maxLength": 50},
+                        "current_gap": {"type": "string", "maxLength": 200},
+                        "instrument_recommended": {"type": "string", "maxLength": 100},
+                        "instrument_reason": {"type": "string", "maxLength": 200},
+                        "proposed_text": {"type": "string", "maxLength": 300},
+                        "lateral_effects": {"type": "string", "maxLength": 200}
+                    }
+                }
+            },
+            "main_finding": {"type": "string", "maxLength": 300}
         },
         "required": ["block"]
     }
