@@ -61,7 +61,7 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
         if (JSON.stringify(fresh.results) !== JSON.stringify(analysis.results) || fresh.status !== analysis.status) {
           setAnalysis(fresh)
         }
-        if (fresh.status === 'complete') clearInterval(interval)
+        if (fresh.status === 'complete' || fresh.status === 'error') clearInterval(interval)
       } catch (err) {
         setUiError(err.message || 'Failed to refresh analysis')
       }
