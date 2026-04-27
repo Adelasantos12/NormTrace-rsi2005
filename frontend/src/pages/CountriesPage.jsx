@@ -17,6 +17,7 @@ export default function CountriesPage({ onSelectAnalysis }) {
   const [showAdd, setShowAdd] = useState(false)
   const [newCountry, setNewCountry] = useState({ iso3: '', name_en: '', legal_system: 'civil_law', is_federal: 'no' })
   const [loading, setLoading] = useState(true)
+  const [isAdding, setIsAdding] = useState(false)
   const [expandedCountry, setExpandedCountry] = useState(null)
   const [analyses, setAnalyses] = useState({})  // iso3 → [analysis]
 
@@ -30,6 +31,7 @@ export default function CountriesPage({ onSelectAnalysis }) {
   async function handleAddCountry(e) {
     e.preventDefault()
     setError('')
+    setIsAdding(true)
     try {
       const c = await createCountry(newCountry)
       setCountries(prev => {
@@ -42,6 +44,8 @@ export default function CountriesPage({ onSelectAnalysis }) {
       toggleCountry(c)
     } catch (err) {
       setError(err.message || 'Could not create country')
+    } finally {
+      setIsAdding(false)
     }
   }
 
@@ -147,8 +151,14 @@ export default function CountriesPage({ onSelectAnalysis }) {
             </select>
           </div>
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={() => setShowAdd(false)} style={btnSecondaryStyle}>{t('actions.cancel')}</button>
-            <button type="submit" style={btnStyle}>{t('actions.confirm')}</button>
+            <button type="button" onClick={() => setShowAdd(false)} disabled={isAdding} style={btnSecondaryStyle}>{t('actions.cancel')}</button>
+            <button type="submit" disabled={isAdding} style={{ ...btnStyle, opacity: isAdding ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {isAdding && (
+                <div style={{ width: '12px', height: '12px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+              )}
+              {isAdding ? 'Adding...' : t('actions.confirm')}
+            </button>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         </form>
       )}

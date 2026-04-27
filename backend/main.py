@@ -6,6 +6,7 @@ from datetime import datetime
 import anthropic
 import json
 import os
+import re
 import traceback
 
 from database import get_db, engine
@@ -157,6 +158,21 @@ app.add_middleware(
 )
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
+
+def extract_json(text: str):
+    """Fallback to extract JSON from text if tool use is wrapped in text."""
+    try:
+        # Look for JSON between triple backticks
+        match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
+        if match:
+            return json.loads(match.group(1))
+        # Look for anything between { and }
+        match = re.search(r"(\{.*\})", text, re.DOTALL)
+        if match:
+            return json.loads(match.group(1))
+    except:
+        pass
+    return None
 
 
 def get_claude_client():

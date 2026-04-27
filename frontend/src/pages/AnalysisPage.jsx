@@ -34,6 +34,18 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysis?.status]);
 
+  // Sequential auto-analysis
+  useEffect(() => {
+    if (analysis && analysis.status === 'analyzing' && !streaming) {
+      const nextBlock = BLOCKS.find(b => !analysis.results?.[b]);
+      if (nextBlock) {
+        startBlockAnalysis(nextBlock);
+        setActiveTab(nextBlock);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status, analysis?.results, streaming]);
+
 
   useEffect(() => {
     getCorpus(analysis.id).then(setCorpus).catch((err) => setUiError(err.message || 'Failed to load corpus'))
@@ -126,14 +138,20 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
     }
   }
 
+  const [isConfirming, setIsConfirming] = useState(false)
+
   async function handleConfirmCorpus() {
     try {
+      setIsConfirming(true)
+      setUiError(null)
       await confirmCorpus(analysis.id)
       const fresh = await getAnalysis(analysis.id)
       setAnalysis(fresh)
       setActiveTab('A')
     } catch (err) {
       setUiError(err.message || 'Failed to confirm corpus')
+    } finally {
+      setIsConfirming(false)
     }
   }
 
@@ -166,6 +184,8 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   const includedCorpus = corpus.filter(i => i.classification === 'include')
   const reviewCorpus = corpus.filter(i => i.classification === 'review')
   const discardedCorpus = corpus.filter(i => i.classification === 'discard')
+
+  const isAutoAnalyzing = analysis?.status === 'analyzing'
 
   return (
     <div>
@@ -233,8 +253,18 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
 
       {/* Tabs */}
       {uiError && (
-        <div style={{ marginBottom: '1rem', color: '#A32D2D', fontSize: '12px' }}>
+        <div style={{ marginBottom: '1rem', color: '#A32D2D', fontSize: '12px', padding: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px' }}>
           {uiError}
+        </div>
+      )}
+
+      {isAutoAnalyzing && (
+        <div style={{ marginBottom: '1.5rem', padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '16px', height: '16px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <span style={{ fontSize: '13px', color: '#1e40af', fontWeight: '500' }}>
+            Automated analysis in progress... Stage: {streaming || activeTab}
+          </span>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
 
@@ -330,8 +360,25 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
                   <p style={{ fontSize: '13px', color: '#0369a1', marginBottom: '1rem', fontWeight: '500' }}>
                     Ready to proceed? Confirm the selected documents to enable detailed analysis.
                   </p>
-                  <button onClick={handleConfirmCorpus} style={{ ...btn, background: '#0284c7', fontSize: '14px', padding: '12px 24px' }}>
-                    ✓ {t('corpus.confirm')}
+              <button
+                onClick={handleConfirmCorpus}
+                disabled={isConfirming}
+                style={{
+                  ...btn,
+                  background: '#0284c7',
+                  fontSize: '14px',
+                  padding: '12px 24px',
+                  opacity: isConfirming ? 0.7 : 1,
+                  cursor: isConfirming ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                {isConfirming && (
+                  <div style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                )}
+                {isConfirming ? 'Confirming...' : `✓ ${t('corpus.confirm')}`}
                   </button>
                 </div>
               )}
