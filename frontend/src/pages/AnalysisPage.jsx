@@ -281,9 +281,10 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
               <CorpusSection
                 title={`${t('corpus.include')} (${includedCorpus.length})`}
                 items={includedCorpus}
-                color="#3B6D11"
+                color="#166534"
                 onClassify={handleClassify}
                 t={t}
+                isIncluded={true}
               />
               <CorpusSection
                 title={`${t('corpus.review')} (${reviewCorpus.length})`}
@@ -324,10 +325,15 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
                 </form>
               )}
 
-              {analysis.status === 'corpus_ready' && (
-                <button onClick={handleConfirmCorpus} style={btn}>
-                  ✓ {t('corpus.confirm')}
-                </button>
+              {(analysis.status === 'corpus_ready' || (analysis.status === 'corpus_pending' && includedCorpus.length > 0)) && (
+                <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px' }}>
+                  <p style={{ fontSize: '13px', color: '#0369a1', marginBottom: '1rem', fontWeight: '500' }}>
+                    Ready to proceed? Confirm the selected documents to enable detailed analysis.
+                  </p>
+                  <button onClick={handleConfirmCorpus} style={{ ...btn, background: '#0284c7', fontSize: '14px', padding: '12px 24px' }}>
+                    ✓ {t('corpus.confirm')}
+                  </button>
+                </div>
               )}
             </>
           )}
@@ -374,14 +380,14 @@ function Tab({ label, id, active, onClick, done }) {
   )
 }
 
-function CorpusSection({ title, items, color, onClassify, t }) {
+function CorpusSection({ title, items, color, onClassify, t, isIncluded }) {
   if (items.length === 0) return null
   return (
-    <div style={{ marginBottom: '1rem' }}>
-      <h3 style={{ fontSize: '11px', fontWeight: '600', color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
+    <div style={{ marginBottom: '1.5rem', padding: isIncluded ? '12px' : '0', background: isIncluded ? '#f0fdf4' : 'none', border: isIncluded ? '1px solid #dcfce7' : 'none', borderRadius: '8px' }}>
+      <h3 style={{ fontSize: '11px', fontWeight: '600', color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
         {title}
       </h3>
-      <div style={{ display: 'grid', gap: '4px' }}>
+      <div style={{ display: 'grid', gap: '6px' }}>
         {items.map(item => (
           <div key={item.id} style={{
             display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', alignItems: 'start',
