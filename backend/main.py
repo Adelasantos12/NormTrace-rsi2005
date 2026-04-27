@@ -308,11 +308,11 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
                 pass
 
             if not tool_args_str.strip() and final_msg:
-                for block in final_msg.content:
-                    if block.type == "tool_use" and block.name == "submit_corpus":
-                        tool_args_str = json.dumps(block.input)
-                    if block.type == "text":
-                        full_raw_text += block.text
+                for content_block in final_msg.content:
+                    if content_block.type == "tool_use" and content_block.name == "submit_corpus":
+                        tool_args_str = json.dumps(content_block.input)
+                    if content_block.type == "text":
+                        full_raw_text += content_block.text
 
             if not tool_args_str.strip():
                 # If tool use failed, maybe it's raw JSON in text? (fallback)
@@ -476,11 +476,11 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
                 pass
 
             if not tool_args_str.strip() and final_msg:
-                for block in final_msg.content:
-                    if block.type == "tool_use" and block.name == "submit_analysis":
-                        tool_args_str = json.dumps(block.input)
-                    if block.type == "text":
-                        full_raw_text += block.text
+                for content_block in final_msg.content:
+                    if content_block.type == "tool_use" and content_block.name == "submit_analysis":
+                        tool_args_str = json.dumps(content_block.input)
+                    if content_block.type == "text":
+                        full_raw_text += content_block.text
 
             if not tool_args_str.strip():
                 # Fallback to extract from text
