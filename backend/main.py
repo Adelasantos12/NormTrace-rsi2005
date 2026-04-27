@@ -168,7 +168,7 @@ frontend_origins = [
 if not frontend_origins:
     frontend_origins = [
         "https://normtrace.up.railway.app",
-        "https://normtrace-rsi2005-production.up.railway.app",
+        "https://ihr2005.normtrace.app",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:5174",
@@ -178,7 +178,6 @@ if not frontend_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins,
-    # Also allow Vercel preview URLs without requiring redeploys/env edits.
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -188,18 +187,38 @@ app.add_middleware(
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 
 def extract_json(text: str):
-    """Fallback to extract JSON from text if tool use is wrapped in text."""
-    try:
-        # Look for JSON between triple backticks
-        match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
-        if match:
-            return json.loads(match.group(1))
-        # Look for anything between { and }
-        match = re.search(r"(\{.*\})", text, re.DOTALL)
-        if match:
-            return json.loads(match.group(1))
-    except:
-        pass
+    """Fallback to extract JSON from text, handling potential extra data/concatenation."""
+    if not text:
+        return None
+
+    # Clean text: remove common artifacts
+    text = text.strip()
+
+    # 1. Attempt to find JSON in triple backticks first
+    match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
+    if match:
+        content = match.group(1).strip()
+        try:
+            return json.loads(content)
+        except:
+            pass
+
+    # 2. Look for the first valid JSON object/array
+    # We use a primitive but effective approach for "Extra data" issues:
+    # Try to find the first complete { ... } or [ ... ]
+
+    start_idx = text.find('{')
+    if start_idx == -1:
+        start_idx = text.find('[')
+
+    if start_idx != -1:
+        # We try to parse substrings of increasing length
+        for end_idx in range(len(text), start_idx, -1):
+            try:
+                return json.loads(text[start_idx:end_idx])
+            except:
+                continue
+
     return None
 
 
@@ -375,10 +394,16 @@ async def discover_corpus(aid: int, db: Session = Depends(get_db)):
 
             try:
                 parsed = json.loads(tool_args_str)
-            except json.JSONDecodeError as e:
-                print(f"[discover_corpus] JSON decode failed at pos {e.pos}: {e}")
-                print(f"[discover_corpus] JSON snippet: {tool_args_str[max(0, e.pos-200):e.pos+200]}")
-                raise
+            except json.JSONDecodeError:
+                # Retry with extract_json fallback for Extra data / malformed concatenation
+                parsed = extract_json(tool_args_str)
+                if not parsed:
+                    # Final attempt: maybe the data is in full_raw_text?
+                    parsed = extract_json(full_raw_text)
+
+                if not parsed:
+                    print(f"[discover_corpus] FAILED to parse JSON after fallbacks. tool_args_str={tool_args_str[:500]} full_raw_text={full_raw_text[:500]}")
+                    raise
 
             db.query(CorpusItem).filter(CorpusItem.analysis_id == aid).delete()
 
@@ -543,10 +568,15 @@ async def analyze_block(aid: int, block: str, db: Session = Depends(get_db)):
 
             try:
                 parsed = json.loads(tool_args_str)
-            except json.JSONDecodeError as e:
-                print(f"[analyze_block:{block}] JSON decode failed at pos {e.pos}: {e}")
-                print(f"[analyze_block:{block}] JSON snippet: {tool_args_str[max(0, e.pos-200):e.pos+200]}")
-                raise
+            except json.JSONDecodeError:
+                # Retry with extract_json fallback
+                parsed = extract_json(tool_args_str)
+                if not parsed:
+                    parsed = extract_json(full_raw_text)
+
+                if not parsed:
+                    print(f"[analyze_block:{block}] FAILED to parse JSON after fallbacks. tool_args_str={tool_args_str[:500]} full_raw_text={full_raw_text[:500]}")
+                    raise
 
             results = dict(a.results or {})
             results[block] = parsed

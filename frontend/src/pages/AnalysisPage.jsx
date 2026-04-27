@@ -25,6 +25,7 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   const [showAddItem, setShowAddItem] = useState(false)
   const [newItem, setNewItem] = useState({ name: '', instrument_type: '', sector: '', url: '', last_reform_label: '', ihr_articles: '' })
   const [uiError, setUiError] = useState('')
+  const [blockErrors, setBlockErrors] = useState({}) // blockName -> boolean
   const cancelStream = useRef(null)
 
   useEffect(() => {
@@ -37,15 +38,15 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
   // Sequential auto-analysis - strictly triggers once when conditions change
   useEffect(() => {
     if (analysis && analysis.status === 'analyzing' && !streaming) {
-      const nextBlock = BLOCKS.find(b => !analysis.results?.[b]);
+      // Find the next block that doesn't have a result AND hasn't errored out
+      const nextBlock = BLOCKS.find(b => !analysis.results?.[b] && !blockErrors[b]);
       if (nextBlock) {
-        // Prevent re-triggering the SAME block if it's already being streamed or just finished
         startBlockAnalysis(nextBlock);
         setActiveTab(nextBlock);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysis?.status, analysis?.results, streaming]);
+  }, [analysis?.status, analysis?.results, streaming, blockErrors]);
 
 
   useEffect(() => {
@@ -119,6 +120,7 @@ export default function AnalysisPage({ country, analysis: initialAnalysis, onBac
       },
       (err) => {
         setStreaming(null)
+        setBlockErrors(prev => ({ ...prev, [block]: true }))
         setUiError(err.message || `Block ${block} failed`)
       }
     )
