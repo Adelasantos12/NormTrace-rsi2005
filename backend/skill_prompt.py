@@ -253,6 +253,11 @@ Does the budget law mandate preparedness funding or is it discretionary?
 
 Return same JSON structure for Block F.
 Include c1_contribution for C1.2 (financing) and C1.5 (accountability).
+STRICT SIZE LIMITS:
+- Max 1 source per article.
+- Max 1 short sentence per finding (<=140 chars).
+- Max 3 instruments_searched per article.
+- Max 3 total articulation_gaps and 3 amendment_gaps.
 """,
 
     "G": """
@@ -268,6 +273,11 @@ Check that domestic laws do NOT contradict what IHR prohibits or limits:
 - Art. 43.2: additional measures must have scientific basis (does domestic law require this?)
 
 Return: list of compatibility findings, potential conflicts, and overall compatibility assessment.
+Use the same tool JSON schema as other blocks.
+STRICT SIZE LIMITS:
+- Provide at most 4 compatibility findings in total.
+- Each finding <=140 chars.
+- Max 1 source per finding.
 """,
 
     "SCORES": """
@@ -291,6 +301,11 @@ Apply weak link rule: if any indicator = 1, overall score ≤ 2.5
 Return the final scores and proposals by calling the provided tool.
 CRITICAL: Keep rationales and proposals extremely short. Max 200 characters per field.
 Avoid redundant text.
+STRICT SIZE LIMITS:
+- Provide max 3 reform_proposals.
+- Each rationale <=120 chars.
+- proposed_text should be one compact legal clause (<=180 chars).
+- main_finding must be one sentence (<=180 chars).
 Use this exact format:
 {{
   "c1_1": {{"score": 1-5, "rationale": "..."}},
